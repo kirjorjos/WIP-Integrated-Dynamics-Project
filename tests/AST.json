@@ -1,0 +1,76 @@
+[
+	{
+		"serializer": "apply",
+		"args": [
+			{
+				"operator": {
+					"serializer": "pipe",
+					"args": [
+						{
+							"serializer": "flip",
+							"args": [
+								{
+									"serializer": "pipe",
+									"args": [
+										{
+											"serializer": "flip",
+											"args": [
+												{
+													"operator": "pipe",
+													"args": []
+												}
+											]
+										},
+										{
+											"serializer": "flip",
+											"args": [
+												{
+													"operator": "pipe",
+													"args": []
+												}
+											]
+										}
+									]
+								}
+							]
+						},
+						{
+							"operator": "apply",
+							"args": []
+						}
+					]
+				},
+				"args": [
+					{
+						"serializer": "flip",
+						"args": [
+							{
+								"serializer": "pipe",
+								"args": [
+									{
+										"serializer": "flip",
+										"args": [
+											{
+												"operator": "pipe",
+												"args": []
+											}
+										]
+									},
+									{
+										"serializer": "flip",
+										"args": [
+											{
+												"operator": "pipe",
+												"args": []
+											}
+										]
+									}
+								]
+							}
+						]
+					}
+				]
+			}
+		]
+	}
+]
