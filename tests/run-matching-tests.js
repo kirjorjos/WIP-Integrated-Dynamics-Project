@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const chokidar = require('chokidar');
 const vm = require('vm');
+const notifier = require('node-notifier');
 
 const sourceDir = 'ASTTransformers';
 const testDir = 'tests';
@@ -50,6 +51,13 @@ const runTests = (file) => {
         console.error(`     Input:     ${JSON.stringify(inputs[i])}`);
         console.error(`     Expected:  ${JSON.stringify(expectedOutputs[i])}`);
         console.error(`     Got:       ${JSON.stringify(result)}`);
+        notifier.notify({
+          title: 'Test failed!',
+          message: 'Check command prompt output',
+          sound: true,
+          wait: false,
+        });
+
       }
     } catch (err) {
       console.error(`  ❌ Test #${i + 1} threw an error:`, err);
