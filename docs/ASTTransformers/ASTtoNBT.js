@@ -14,7 +14,6 @@ function serializeOperatorNode(node) {
   }
   if (node.serializer === "integrateddynamics:curry") {
     let firstArg = node.args.shift();
-    console.log(firstArg);
     let serializer = operatorRegistry.baseOperators[firstArg.operator.serializer]?.serializer;
     if (serializer) {
       node.value = {
@@ -50,6 +49,10 @@ function serializeOperatorNode(node) {
       })
     }
     delete node.args;
+  }
+  if (node.type in operatorRegistry.typeSerializers) {
+    node.valueType = operatorRegistry.typeSerializers[node.type].valueType;
+    delete node.type;
   }
   if (node.operator && Array.isArray(node.args) && node.args?.length === 0) node = operatorRegistry.baseOperators[node.operator].internalName;
   return node;

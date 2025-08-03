@@ -46,7 +46,10 @@ function NBTtoAST(nbt) {
           serializer: "apply",
           args: [
             {
-              operator: (typeof value.baseOperator === "string") ? extractKeyByInternalName(value.baseOperator) : NBTtoAST(unwrapLazy(value.baseOperator)),
+              operator: (() => {
+                if (value.baseOperator) return (typeof value.baseOperator === "string") ? extractKeyByInternalName(value.baseOperator) : NBTtoAST(unwrapLazy(value.baseOperator));
+                return value.proxyName;
+              })(),
               args: (value.values ?? []).map(val => {
                 val = unwrapLazy(val);
                 if (val.type === "Operator" || val.valueType === "integrateddynamics:operator") {

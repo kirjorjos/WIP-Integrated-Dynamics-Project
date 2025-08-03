@@ -37,18 +37,19 @@ const onChange = (filePath) => {
 
 const runTests = (file) => {
 	const funcName = filesToWatch[file].func;
-	const inputs = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'docs', `${filesToWatch[file].input}.json`), 'utf-8'));
-	const expectedOutputs = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'docs', `${filesToWatch[file].expected}.json`), 'utf-8'));
+	const inputs = JSON.parse(fs.readFileSync(path.join(__dirname, '..', testDir, `${filesToWatch[file].input}.json`), 'utf-8'));
+	const expectedOutputs = JSON.parse(fs.readFileSync(path.join(__dirname, '..', testDir, `${filesToWatch[file].expected}.json`), 'utf-8'));
 	for (let i = 0; i < inputs.length; i++) {
     try {
       if (!expectedOutputs[i]) continue;
-      const result = sandbox[funcName](inputs[i]);
+      const inputStr = JSON.stringify(inputs[i]);
+      const result = sandbox[funcName](JSON.parse(inputStr));
       const pass = JSON.stringify(result) === JSON.stringify(expectedOutputs[i]);
       if (pass) {
         console.log(`  ✅ Test #${i + 1} passed.`);
       } else {
         console.error(`  ❌ Test #${i + 1} failed.`);
-        console.error(`     Input:     ${JSON.stringify(inputs[i])}`);
+        console.error(`     Input:     ${JSON.stringify(`${inputStr}`)}`);
         console.error(`     Expected:  ${JSON.stringify(expectedOutputs[i])}`);
         console.error(`     Got:       ${JSON.stringify(result)}`);
         notifier.notify({
