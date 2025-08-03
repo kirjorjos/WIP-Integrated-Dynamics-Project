@@ -4,10 +4,10 @@ const chokidar = require('chokidar');
 const vm = require('vm');
 const notifier = require('node-notifier');
 
-const sourceDir = 'ASTTransformers';
+const sourceDir = 'src/ASTTransformers';
 const testDir = 'tests';
 const sandbox = vm.createContext({
-	operatorRegistry: JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'operatorRegistry.json'), 'utf-8')),
+	operatorRegistry: JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'src', 'operatorRegistry.json'), 'utf-8')),
 	console
 });
 
@@ -21,7 +21,7 @@ const jsFiles = fs
   .filter(file => file.endsWith('.js'))
   .map(file => path.join(sourceDir, file));
 
-loadScriptInSandbox(path.join(__dirname, '..', 'helpers.js'));
+loadScriptInSandbox(path.join(__dirname, '..', 'src', 'helpers.js'));
 
 const onChange = (filePath) => {
   const baseName = path.basename(filePath);
@@ -37,8 +37,8 @@ const onChange = (filePath) => {
 
 const runTests = (file) => {
 	const funcName = filesToWatch[file].func;
-	const inputs = JSON.parse(fs.readFileSync(path.join(__dirname, `${filesToWatch[file].input}.json`), 'utf-8'));
-	const expectedOutputs = JSON.parse(fs.readFileSync(path.join(__dirname, `${filesToWatch[file].expected}.json`), 'utf-8'));
+	const inputs = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'src', `${filesToWatch[file].input}.json`), 'utf-8'));
+	const expectedOutputs = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'src', `${filesToWatch[file].expected}.json`), 'utf-8'));
 	for (let i = 0; i < inputs.length; i++) {
     try {
       if (!expectedOutputs[i]) continue;

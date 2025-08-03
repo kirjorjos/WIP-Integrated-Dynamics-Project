@@ -19,7 +19,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const NBT = JSON.parse(
       document.getElementById('nbt').value
         .replace(/([{,]\s*)([A-Za-z_]+)(\s*:)/g, '$1"$2"$3')                  // Quote keys
-        .replace(/(:\s*)([A-Za-z0-9_]*)(?=\s*[,}])/g, '$1"$2"')     // Quote unquoted alphanumeric values
+        .replace(/(:\s*)([A-Za-z0-9_]*[A-Za-z][A-Za-z0-9_]*)(?=\s*[,}])/g, '$1"$2"')     // Quote unquoted alphanumeric values
     );    
     const result = NBTtoAST(NBT);
     document.getElementById('ast').value = JSON.stringify(result);
