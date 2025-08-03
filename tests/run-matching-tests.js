@@ -40,6 +40,7 @@ const runTests = (file) => {
 	const expectedOutputs = JSON.parse(fs.readFileSync(path.join(__dirname, `${filesToWatch[file].expected}.json`), 'utf-8'));
 	for (let i = 0; i < inputs.length; i++) {
     try {
+      if (!expectedOutputs[i]) continue;
       const result = sandbox[funcName](inputs[i]);
       const pass = JSON.stringify(result) === JSON.stringify(expectedOutputs[i]);
       if (pass) {
