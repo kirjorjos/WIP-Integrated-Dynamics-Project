@@ -1,4 +1,4 @@
-{
+const operatorRegistry = {
   "baseOperators": {
     "and": {
       "internalName": "integrateddynamics:logical_and",

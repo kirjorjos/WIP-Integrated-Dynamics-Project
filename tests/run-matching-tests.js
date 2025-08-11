@@ -7,7 +7,6 @@ const notifier = require('node-notifier');
 const sourceDir = 'docs/ASTTransformers';
 const testDir = 'tests';
 const sandbox = vm.createContext({
-	operatorRegistry: JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'docs', 'operatorRegistry.json'), 'utf-8')),
 	console
 });
 
@@ -22,6 +21,7 @@ const jsFiles = fs
   .map(file => path.join(sourceDir, file));
 
 loadScriptInSandbox(path.join(__dirname, '..', 'docs', 'helpers.js'));
+loadScriptInSandbox(path.join(__dirname, '..', 'docs', 'operatorRegistry.js'));
 
 const onChange = (filePath) => {
   const baseName = path.basename(filePath);
