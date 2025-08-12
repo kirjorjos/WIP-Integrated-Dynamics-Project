@@ -1,3 +1,7 @@
+/**
+ * TODO: Test that the operators involving regexes work correctly.
+ */
+
 const operatorRegistry = {
   "baseOperators": {
     "and": {
@@ -41,7 +45,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "&&",
-      "interactName": "booleanAnd"
+      "interactName": "booleanAnd",
+      "function": (bool1) => {
+        return (bool2) => {
+          return bool1 && bool2;
+        }
+      }
     },
     "or": {
       "internalName": "integrateddynamics:logical_or",
@@ -84,7 +93,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "||",
-      "interactName": "booleanOr"
+      "interactName": "booleanOr",
+      "function": (bool1) => {
+        return (bool2) => {
+          return bool1 || bool2;
+        }
+      }
     },
     "not": {
       "internalName": "integrateddynamics:logical_not",
@@ -116,7 +130,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "!",
-      "interactName": "booleanNot"
+      "interactName": "booleanNot",
+      "function": (bool) => {
+        return !bool;
+      }
     },
     "nand": {
       "internalName": "integrateddynamics:logical_nand",
@@ -159,7 +176,14 @@ const operatorRegistry = {
         ]
       },
       "symbol": "!&&",
-      "interactName": "booleanNand"
+      "interactName": "booleanNand",
+      "function": (func1) => {
+        return (func2) => {
+          return (input) => {
+            return !(func1(input) && func2(input));
+          }
+        }
+      }
     },
     "nor": {
       "internalName": "integrateddynamics:logical_nor",
@@ -202,7 +226,14 @@ const operatorRegistry = {
         ]
       },
       "symbol": "!||",
-      "interactName": "booleanNor"
+      "interactName": "booleanNor",
+      "function": (func1) => {
+        return (func2) => {
+          return (input) => {
+            return !(func1(input) || func2(input));
+          }
+        }
+      }
     },
     "add": {
       "internalName": "integrateddynamics:arithmetic_addition",
@@ -245,7 +276,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "+",
-      "interactName": "numberAdd"
+      "interactName": "numberAdd",
+      "function": (num1) => {
+        return (num2) => {
+          return num1.add(num2);
+        }
+      }
     },
     "subtract": {
       "internalName": "integrateddynamics:arithmetic_subtraction",
@@ -288,7 +324,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "-",
-      "interactName": "numberSubtract"
+      "interactName": "numberSubtract",
+      "function": (num1) => {
+        return (num2) => {
+          return num1.subtract(num2);
+        }
+      }
     },
     "multiply": {
       "internalName": "integrateddynamics:arithmetic_multiplication",
@@ -331,7 +372,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "*",
-      "interactName": "numberMultiply"
+      "interactName": "numberMultiply",
+      "function": (num1) => {
+        return (num2) => {
+          return num1.multiply(num2);
+        }
+      }
     },
     "divide": {
       "internalName": "integrateddynamics:arithmetic_division",
@@ -374,7 +420,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "/",
-      "interactName": "numberDivide"
+      "interactName": "numberDivide",
+      "function": (num1) => {
+        return (num2) => {
+          return num1.divide(num2);
+        }
+      }
     },
     "max": {
       "internalName": "integrateddynamics:arithmetic_maximum",
@@ -417,7 +468,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "max",
-      "interactName": "numberMax"
+      "interactName": "numberMax",
+      "function": (num1) => {
+        return (num2) => {
+          return InDyClasses.Number.max(num1, num2);
+        }
+      }
     },
     "min": {
       "internalName": "integrateddynamics:arithmetic_minimum",
@@ -460,7 +516,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "min",
-      "interactName": "numberMin"
+      "interactName": "numberMin",
+      "function": (num1) => {
+        return (num2) => {
+          return InDyClasses.Number.min(num1, num2);
+        }
+      }
     },
     "increment": {
       "internalName": "integrateddynamics:arithmetic_increment",
@@ -492,7 +553,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "++",
-      "interactName": "numberIncrement"
+      "interactName": "numberIncrement",
+      "function": (num1) => {
+          return num1.add(1);
+      }
     },
     "decrement": {
       "internalName": "integrateddynamics:arithmetic_decrement",
@@ -524,7 +588,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "--",
-      "interactName": "numberDecrement"
+      "interactName": "numberDecrement",
+      "function": (num1) => {
+        return num1.subtract(1);
+      }
     },
     "modulus": {
       "internalName": "integrateddynamics:arithmetic_modulus",
@@ -567,7 +634,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "%",
-      "interactName": "numberModulus"
+      "interactName": "numberModulus",
+      "function": (num1) => {
+        return (num2) => {
+          return num1.modulus(num2);
+        }
+      }
     },
     "doubleSqrt": {
       "internalName": "integrateddynamics:double_sqrt",
@@ -640,7 +712,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "pow",
-      "interactName": "doublePow"
+      "interactName": "doublePow",
+      "function": (base) => {
+        return (exponent) => {
+          return base.pow(exponent);
+        }
+      }
     },
     "==": {
       "internalName": "integrateddynamics:relational_equals",
@@ -683,7 +760,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "==",
-      "interactName": "anyEquals"
+      "interactName": "anyEquals",
+      "function": (value1) => {
+        return (value2) => {
+          try {return value1.equals(value2)} catch(e) {return value1 === value2};
+        }
+      }
     },
     ">": {
       "internalName": "integrateddynamics:relational_gt",
@@ -726,7 +808,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": ">",
-      "interactName": "numberGreaterThan"
+      "interactName": "numberGreaterThan",
+      "function": (num1) => {
+        return (num2) => {
+          return InDyClasses.Number.gt(num1, num2);
+        }
+      }
     },
     "<": {
       "internalName": "integrateddynamics:relational_lt",
@@ -769,7 +856,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "<",
-      "interactName": "numberLessThan"
+      "interactName": "numberLessThan",
+      "function": (num1) => {
+        return (num2) => {
+          return InDyClasses.Number.lt(num1, num2);
+        }
+      }
     },
     "!=": {
       "internalName": "integrateddynamics:relational_notequals",
@@ -812,7 +904,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "!=",
-      "interactName": "anyNotEquals"
+      "interactName": "anyNotEquals",
+      "function": (value1) => {
+        return (value2) => {
+          try {return !value1.equals(value2)} catch(e) {return value1 !== value2};
+        }
+      }
     },
     ">=": {
       "internalName": "integrateddynamics:relational_ge",
@@ -855,7 +952,18 @@ const operatorRegistry = {
         ]
       },
       "symbol": ">=",
-      "interactName": "anyGreaterThanOrEquals"
+      "interactName": "anyGreaterThanOrEquals",
+      "function": (num1) => {
+        return (num2) => {
+          return InDyClasses.Number.gt(num1, num2) || (() => {
+            try {
+              return num1.equals(num2);
+            } catch (e) {
+              return num1 === num2;
+            }
+          })();
+        };
+      }
     },
     "<=": {
       "internalName": "integrateddynamics:relational_le",
@@ -898,7 +1006,18 @@ const operatorRegistry = {
         ]
       },
       "symbol": "<=",
-      "interactName": "anyLessThanOrEquals"
+      "interactName": "anyLessThanOrEquals",
+      "function": (num1) => {
+        return (num2) => {
+          return InDyClasses.Number.lt(num1, num2) || (() => {
+            try {
+              return num1.equals(num2);
+            } catch (e) {
+              return num1 === num2;
+            }
+          })();
+        };
+      }
     },
     "binaryAnd": {
       "internalName": "integrateddynamics:binary_and",
@@ -939,7 +1058,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "&",
-      "interactName": "integerBinaryAnd"
+      "interactName": "integerBinaryAnd",
+      "function": (int1) => {
+        return (int2) => {
+          return (int1 & int2);
+        }
+      }
     },
     "binaryOr": {
       "internalName": "integrateddynamics:binary_or",
@@ -980,7 +1104,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "|",
-      "interactName": "integerBinaryOr"
+      "interactName": "integerBinaryOr",
+      "function": (int1) => {
+        return (int2) => {
+          return (int1 | int2);
+        }
+      }
     },
     "binaryXor": {
       "internalName": "integrateddynamics:binary_xor",
@@ -1021,7 +1150,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "^",
-      "interactName": "integerXor"
+      "interactName": "integerXor",
+      "function": (int1) => {
+        return (int2) => {
+          return (int1 ^ int2);
+        }
+      }
     },
     "binaryComplement": {
       "internalName": "integrateddynamics:binary_complement",
@@ -1051,7 +1185,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "~",
-      "interactName": "integerComplement"
+      "interactName": "integerComplement",
+      "function": (int) => {
+        return ~int;
+      }
     },
     "<<": {
       "internalName": "integrateddynamics:binary_lshift",
@@ -1094,7 +1231,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "<<",
-      "interactName": "integerLeftShift"
+      "interactName": "integerLeftShift",
+      "function": (int1) => {
+        return (int2) => {
+          return (int1 << int2);
+        }
+      }
     },
     ">>": {
       "internalName": "integrateddynamics:binary_rshift",
@@ -1137,7 +1279,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": ">>",
-      "interactName": "integerRightShift"
+      "interactName": "integerRightShift",
+      "function": (int1) => {
+        return (int2) => {
+          return (int1 >> int2);
+        }
+      }
     },
     ">>>": {
       "internalName": "integrateddynamics:binary_rzshift",
@@ -1180,7 +1327,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": ">>>",
-      "interactName": "integerUnsignedRightShift"
+      "interactName": "integerUnsignedRightShift",
+      "function": (int1) => {
+        return (int2) => {
+          return (int1 >>> int2);
+        }
+      }
     },
     "stringLength": {
       "internalName": "integrateddynamics:string_length",
@@ -1210,7 +1362,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "len",
-      "interactName": "stringLength"
+      "interactName": "stringLength",
+      "function": (str) => {
+        return str.length;
+      }
     },
     "stringConcat": {
       "internalName": "integrateddynamics:string_concat",
@@ -1251,7 +1406,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "+",
-      "interactName": "stringConcat"
+      "interactName": "stringConcat",
+      "function": (str1) => {
+        return (str2) => {
+          return str1.concat(str2);
+        }
+      }
     },
     "stringContains": {
       "internalName": "integrateddynamics:string_contains",
@@ -1292,7 +1452,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "contains",
-      "interactName": "stringContains"
+      "interactName": "stringContains",
+      "function": (substring) => {
+        return (fullString) => {
+          return fullString.includes(substring);
+        }
+      }
     },
     "containsRegex": {
       "internalName": "integrateddynamics:string_contains_regex",
@@ -1333,7 +1498,13 @@ const operatorRegistry = {
         ]
       },
       "symbol": "contains_regex",
-      "interactName": "stringContainsRegex"
+      "interactName": "stringContainsRegex",
+      "function": (regexString) => {
+        return (fullString) => {
+          const regex = new RE2(regexString, "u");
+          return regex.test(fullString);
+        }
+      }
     },
     "matchesRegex": {
       "internalName": "integrateddynamics:string_matches_regex",
@@ -1374,7 +1545,15 @@ const operatorRegistry = {
         ]
       },
       "symbol": "matches_regex",
-      "interactName": "stringMatchesRegex"
+      "interactName": "stringMatchesRegex",
+      "function": (regexString) => {
+        return (fullString) => {
+          if (regexString.startsWith('^')) regexString = regexString.slice(1);
+          if (regexString.endsWith('$')) regexString = regexString.slice(0, -1);
+          const regex = new RE2(`^(?:${regexString})$`, 'u');
+          return regex.test(fullString);
+        }
+      }
     },
     "stringIndexOf": {
       "internalName": "integrateddynamics:string_index_of",
@@ -1415,7 +1594,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "index_of",
-      "interactName": "stringIndexOf"
+      "interactName": "stringIndexOf",
+      "function": (substring) => {
+        return (fullString) => {
+          return fullString.indexOf(substring);
+        }
+      }
     },
     "indexOfRegex": {
       "internalName": "integrateddynamics:string_index_of_regex",
@@ -1458,7 +1642,13 @@ const operatorRegistry = {
         ]
       },
       "symbol": "index_of_regex",
-      "interactName": "stringIndexOfRegex"
+      "interactName": "stringIndexOfRegex",
+      "function": (regexString) => {
+        return (fullString) => {
+          const regex = new RE2(regexString, "u");
+          const match = fullString.search(regex);
+        }
+      }
     },
     "startsWith": {
       "internalName": "integrateddynamics:string_starts_with",
@@ -1501,7 +1691,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "starts_with",
-      "interactName": "stringStartsWith"
+      "interactName": "stringStartsWith",
+      "function": (substring) => {
+        return (fullString) => {
+          return fullString.startsWith(substring);
+        }
+      }
     },
     "endsWith": {
       "internalName": "integrateddynamics:string_ends_with",
@@ -1544,7 +1739,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "ends_with",
-      "interactName": "stringEndsWith"
+      "interactName": "stringEndsWith",
+      "function": (substring) => {
+        return (fullString) => {
+          return fullString.endsWith(substring);
+        }
+      }
     },
     "stringSplitOn": {
       "internalName": "integrateddynamics:string_split_on",
@@ -1591,7 +1791,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "split_on",
-      "interactName": "stringSplitOn"
+      "interactName": "stringSplitOn",
+      "function": (delimiter) => {
+        return (fullString) => {
+          return fullString.split(delimiter);
+        }
+      }
     },
     "stringSplitOnRegex": {
       "internalName": "integrateddynamics:string_split_on_regex",
@@ -1638,7 +1843,13 @@ const operatorRegistry = {
         ]
       },
       "symbol": "split_on_regex",
-      "interactName": "stringSplitOnRegex"
+      "interactName": "stringSplitOnRegex",
+      "function": (regexString) => {
+        return (fullString) => {
+          const regex = new RE2(regexString, "u");
+          return fullString.split(regex);
+        }
+      }
     },
     "substring": {
       "internalName": "integrateddynamics:string_substring",
@@ -1692,7 +1903,14 @@ const operatorRegistry = {
         ]
       },
       "symbol": "substring",
-      "interactName": "integerSubstring"
+      "interactName": "integerSubstring",
+      "function": (start) => {
+        return (end) => {
+          return (fullString) => {
+            return fullString.substring(start, end);
+          }
+        }
+      }
     },
     "stringRegexGroup": {
       "internalName": "integrateddynamics:string_regex_group",
@@ -1744,7 +1962,20 @@ const operatorRegistry = {
         ]
       },
       "symbol": "regex_group",
-      "interactName": "stringRegexGroup"
+      "interactName": "stringRegexGroup",
+      "function": (regexString) => {
+        return (groupIndex) => {
+          return (fullString) => {
+            const regex = new RE2(regexString, "u");
+            const match = regex.exec(fullString);
+            if (match && match[groupIndex] !== undefined) {
+              return match[groupIndex];
+            } else {
+              throw new Error(`No match found for group index ${groupIndex} in regex "${regexString}" on string "${fullString}"`);
+            }
+          }
+        }
+      }
     },
     "stringRegexGroups": {
       "internalName": "integrateddynamics:string_regex_groups",
@@ -1791,7 +2022,18 @@ const operatorRegistry = {
         ]
       },
       "symbol": "regex_groups",
-      "interactName": "stringRegexGroups"
+      "interactName": "stringRegexGroups",
+      "function": (regexString) => {
+        return (fullString) => {
+          const regex = new RE2(regexString, "u");
+          const match = regex.exec(fullString);
+          if (match) {
+            return match;
+          } else {
+            throw new Error(`No match found for group index ${groupIndex} in regex "${regexString}" on string "${fullString}"`);
+          }
+        }
+      }
     },
     "stringRegexScan": {
       "internalName": "integrateddynamics:string_regex_scan",
@@ -1849,7 +2091,26 @@ const operatorRegistry = {
         ]
       },
       "symbol": "regex_scan",
-      "interactName": "stringRegexScan"
+      "interactName": "stringRegexScan",
+      "function": (regexString) => {
+        return (groupIndex) => {
+          return (fullString) => {
+            const regex = new RE2(regexString, "gu");
+            let results = [];
+            let match;
+            regex.lastIndex = 0;
+
+            while ((match = regex.exec(fullString)) !== null) {
+              const groupValue = match[groupIndex];
+              if (groupValue !== undefined && groupValue !== null) {
+                results.push(groupValue);
+              }
+            }
+
+            return results;
+          }
+        }
+      }
     },
     "stringReplace": {
       "internalName": "integrateddynamics:string_replace",
@@ -1901,7 +2162,14 @@ const operatorRegistry = {
         ]
       },
       "symbol": "replace",
-      "interactName": "stringReplace"
+      "interactName": "stringReplace",
+      "function": (searchString) => {
+        return (replacementString) => {
+          return (fullString) => {
+            return fullString.replace(searchString, replacementString);
+          }
+        }
+      }
     },
     "stringReplaceRegex": {
       "internalName": "integrateddynamics:string_replace_regex",
@@ -1953,7 +2221,15 @@ const operatorRegistry = {
         ]
       },
       "symbol": "replace_regex",
-      "interactName": "stringReplaceRegex"
+      "interactName": "stringReplaceRegex",
+      "function": (regexString) => {
+        return (replacementString) => {
+          return (fullString) => {
+            const regex = new RE2(regexString, "u");
+            return fullString.replace(regex, replacementString);
+          }
+        }
+      }
     },
     "stringJoin": {
       "internalName": "integrateddynamics:string_join",
@@ -2000,7 +2276,15 @@ const operatorRegistry = {
         ]
       },
       "symbol": "join",
-      "interactName": "stringJoin"
+      "interactName": "stringJoin",
+      "function": (delimiter) => {
+        return (stringList) => {
+          if (stringList.some(item => typeof item !== 'string')) {
+            throw new Error("stringJoin expects a list of strings");
+          }
+          return stringList.join(delimiter);
+        }
+      }
     },
     "name": {
       "internalName": "integrateddynamics:string_name",
@@ -2033,7 +2317,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "name",
-      "interactName": "namedName"
+      "interactName": "namedName",
+      "function": (named) => {
+        return named.toString();
+      }
     },
     "uname": {
       "internalName": "integrateddynamics:string_unique_name",
@@ -2065,7 +2352,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "uname",
-      "interactName": "uniquely_namedUniqueName"
+      "interactName": "uniquely_namedUniqueName",
+      "function": (uniquelyNamed) => {
+        return uniquelyNamed.getUniqueName();
+      }
     },
     "error": {
       "internalName": "integrateddynamics:string_string_error",
@@ -2097,7 +2387,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "error",
-      "interactName": "stringStringError"
+      "interactName": "stringStringError",
+      "function": (message) => {
+        throw new Error(`Error: ${message}`);
+      }
     },
     "round": {
       "internalName": "integrateddynamics:number_round",
@@ -2129,7 +2422,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "|| ||",
-      "interactName": "numberRound"
+      "interactName": "numberRound",
+      "function": (number) => {
+        return number.round();
+      }
     },
     "ceil": {
       "internalName": "integrateddynamics:number_ceil",
@@ -2161,7 +2457,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "⌈ ⌉",
-      "interactName": "numberCeil"
+      "interactName": "numberCeil",
+      "function": (number) => {
+        return number.ceil();
+      }
     },
     "floor": {
       "internalName": "integrateddynamics:number_floor",
@@ -2193,7 +2492,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "⌊ ⌋",
-      "interactName": "numberFloor"
+      "interactName": "numberFloor",
+      "function": (number) => {
+        return number.floor();
+      }
     },
     "compact": {
       "internalName": "integrateddynamics:number_compact",
@@ -2225,7 +2527,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "compact",
-      "interactName": "numberCompact"
+      "interactName": "numberCompact",
+      "function": (number) => {
+        return number.compact();
+      }
     },
     "isNull": {
       "internalName": "integrateddynamics:general_isnull",
@@ -2257,7 +2562,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "o",
-      "interactName": "anyIsNull"
+      "interactName": "anyIsNull",
+      "function": (value) => {
+        return value === null || value === undefined;
+      }
     },
     "isNotNull": {
       "internalName": "integrateddynamics:general_isnotnull",
@@ -2289,7 +2597,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "∅",
-      "interactName": "anyIsNotNull"
+      "interactName": "anyIsNotNull",
+      "function": (value) => {
+        return value !== null && value !== undefined;
+      }
     },
     "listLength": {
       "internalName": "integrateddynamics:list_length",
@@ -2325,7 +2636,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "| |",
-      "interactName": "listLength"
+      "interactName": "listLength",
+      "function": (list) => {
+        return list.length;
+      }
     },
     "listEmpty": {
       "internalName": "integrateddynamics:list_empty",
@@ -2361,7 +2675,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "∅",
-      "interactName": "listIsEmpty"
+      "interactName": "listIsEmpty",
+      "function": (list) => {
+        return list.length === 0;
+      }
     },
     "listNotEmpty": {
       "internalName": "integrateddynamics:list_notempty",
@@ -2397,7 +2714,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "o",
-      "interactName": "listIsNotEmpty"
+      "interactName": "listIsNotEmpty",
+      "function": (list) => {
+        return list.length > 0;
+      }
     },
     "get": {
       "internalName": "integrateddynamics:list_get",
@@ -2446,7 +2766,15 @@ const operatorRegistry = {
         ]
       },
       "symbol": "get",
-      "interactName": "listGet"
+      "interactName": "listGet",
+      "function": (index) => {
+        return (list) => {
+          if (index < 0 || index >= list.length) {
+            throw new Error(`Index ${index} out of bounds for list of length ${list.length}`);
+          }
+          return list[index];
+        }
+      }
     },
     "getOrDefault": {
       "internalName": "integrateddynamics:list_get_or_default",
@@ -2507,7 +2835,15 @@ const operatorRegistry = {
         ]
       },
       "symbol": "get_or_default",
-      "interactName": "listGetOrDefault"
+      "interactName": "listGetOrDefault",
+      "function": (index, defaultValue) => {
+        return (list) => {
+          if (index < 0 || index >= list.length) {
+            return defaultValue;
+          }
+          return list[index];
+        }
+      }
     },
     "listContains": {
       "internalName": "integrateddynamics:list_contains",
@@ -2554,7 +2890,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "contains",
-      "interactName": "listContains"
+      "interactName": "listContains",
+      "function": (element) => {
+        return (list) => {
+          return list.includes(element);
+        }
+      }
     },
     "listContainsPredicate": {
       "internalName": "integrateddynamics:list_contains_p",
@@ -2621,7 +2962,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "contains_p",
-      "interactName": "listContainsPredicate"
+      "interactName": "listContainsPredicate",
+      "function": (predicate) => {
+        return (list) => {
+          return list.some(item => predicate(item));
+        }
+      }
     },
     "listCount": {
       "internalName": "integrateddynamics:list_count",
@@ -2646,18 +2992,35 @@ const operatorRegistry = {
               }
             },
             "to": {
-              "kind": "Generic",
+              "kind": "Function",
               "name": "$2",
-              "of": {
-                "kind": "Concrete",
-                "name": "Integer"
+              "from": {
+                "kind": "Generic",
+                "name": "$2",
+                "of": {
+                  "kind": "Any",
+                  "typeID": "$type1"
+                },
+                "to": {
+                  "kind": "Generic",
+                  "name": "$3",
+                  "of": {
+                    "kind": "Concrete",
+                    "name": "Integer"
+                  }
+                }
               }
             }
           }
         ]
       },
       "symbol": "count",
-      "interactName": "listCount"
+      "interactName": "listCount",
+      "function": (list) => {
+        return (element) => {
+          return list.filter(item => item === element).length;
+        }
+      }
     },
     "listCountPredicate": {
       "internalName": "integrateddynamics:list_count_p",
@@ -2724,7 +3087,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "count_p",
-      "interactName": "listCountPredicate"
+      "interactName": "listCountPredicate",
+      "function": (list) => {
+        return (predicate) => {
+          return list.filter(item => predicate(item)).length;
+        }
+      }
     },
     "append": {
       "internalName": "integrateddynamics:list_append",
@@ -2779,7 +3147,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "append",
-      "interactName": "listAppend"
+      "interactName": "listAppend",
+      "function": (list) => {
+        return (element) => {
+          return [...list, element];
+        }
+      }
     },
     "listConcat": {
       "internalName": "integrateddynamics:list_concat",
@@ -2838,7 +3211,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "concat",
-      "interactName": "listConcat"
+      "interactName": "listConcat",
+      "function": (list1) => {
+        return (list2) => {
+          return [...list1, ...list2];
+        }
+      }
     },
     "lazybuilt": {
       "internalName": "integrateddynamics:list_lazybuilt",
@@ -2929,7 +3307,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "lazybuilt",
-      "interactName": "anyLazyBuilt"
+      "interactName": "anyLazyBuilt",
+      "function": (element) => {
+        return (builder) => {
+          return new InfiniteList(builder);
+        }
+      }
     },
     "head": {
       "internalName": "integrateddynamics:list_head",
@@ -2968,7 +3351,13 @@ const operatorRegistry = {
         ]
       },
       "symbol": "head",
-      "interactName": "listHead"
+      "interactName": "listHead",
+      "function": (list) => {
+        if (list.length === 0) {
+          throw new Error("head called on an empty list");
+        }
+        return list[0];
+      }
     },
     "tail": {
       "internalName": "integrateddynamics:list_tail",
@@ -3012,7 +3401,13 @@ const operatorRegistry = {
         ]
       },
       "symbol": "tail",
-      "interactName": "listTail"
+      "interactName": "listTail",
+      "function": (list) => {
+        if (list.length === 0) {
+          throw new Error("tail called on an empty list");
+        }
+        return list.slice(1);
+      }
     },
     "listUniqPredicate": {
       "internalName": "integrateddynamics:list_uniq_p",
@@ -3098,7 +3493,21 @@ const operatorRegistry = {
         ]
       },
       "symbol": "uniq_p",
-      "interactName": "listUniquePredicate"
+      "interactName": "listUniquePredicate",
+      "function": (list) => {
+        return (predicate) => {
+          const seen = new Set();
+          return list.filter(item => {
+            const key = predicate(item);
+            if (seen.has(key)) {
+              return false;
+            } else {
+              seen.add(key);
+              return true;
+            }
+          });
+        }
+      }
     },
     "listUniq": {
       "internalName": "integrateddynamics:list_uniq",
@@ -3140,7 +3549,18 @@ const operatorRegistry = {
         ]
       },
       "symbol": "uniq",
-      "interactName": "listUnique"
+      "interactName": "listUnique",
+      "function": (list) => {
+        const seen = new Set();
+        return list.filter(item => {
+          if (seen.has(item)) {
+            return false;
+          } else {
+            seen.add(item);
+            return true;
+          }
+        });
+      }
     },
     "slice": {
       "internalName": "integrateddynamics:list_slice",
@@ -3206,7 +3626,17 @@ const operatorRegistry = {
         ]
       },
       "symbol": "slice",
-      "interactName": "listSlice"
+      "interactName": "listSlice",
+      "function": (list) => {
+        return (start) => {
+          return (end) => {
+            if (start < 0 || end > list.length || start > end) {
+              throw new Error(`Invalid slice range: [${start}, ${end}) for list of length ${list.length}`);
+            }
+            return list.slice(start, end);
+          }
+        }
+      }
     },
     "intersection": {
       "internalName": "integrateddynamics:list_intersection",
@@ -3267,7 +3697,13 @@ const operatorRegistry = {
         ]
       },
       "symbol": "∩",
-      "interactName": "listIntersection"
+      "interactName": "listIntersection",
+      "function": (list1) => {
+        return (list2) => {
+          const set1 = new Set(list1);
+          return list2.filter(item => set1.has(item));
+        }
+      }
     },
     "equalsSet": {
       "internalName": "integrateddynamics:list_equals_set",
@@ -3322,7 +3758,14 @@ const operatorRegistry = {
         ]
       },
       "symbol": "=set=",
-      "interactName": "listEquals_set"
+      "interactName": "listEquals_set",
+      "function": (list1) => {
+        return (list2) => {
+          const set1 = new Set(list1);
+          const set2 = new Set(list2);
+          return set1.equals(set2);
+        }
+      }
     },
     "equalsMultiset": {
       "internalName": "integrateddynamics:list_equals_multiset",
@@ -3377,7 +3820,26 @@ const operatorRegistry = {
         ]
       },
       "symbol": "=multiset=",
-      "interactName": "listEquals_multiset"
+      "interactName": "listEquals_multiset",
+      "function": (list1) => {
+        return (list2) => {
+          const newList1 = [...list1].sort();
+          const newList2 = [...list2].sort();
+          if (newList1.length !== newList2.length) {
+            return false;
+          }
+          for (let i = 0; i < newList1.length; i++) {
+            if (Object.keys(newList1[i]).includes("equals") && typeof newList1[i].equals === "function") {
+              if (!newList1[i].equals(newList2[i])) {
+                return false;
+              }
+            } else if (newList1[i] !== newList2[i]) {
+              return false;
+            }
+          }
+          return true;
+        }
+      }
     },
     "opaque": {
       "internalName": "integrateddynamics:block_opaque",
@@ -3409,7 +3871,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "opaque",
-      "interactName": "blockIsOpaque"
+      "interactName": "blockIsOpaque",
+      "function": (block) => {
+        return block.isOpaque();
+      }
     },
     "blockItem": {
       "internalName": "integrateddynamics:block_itemstack",
@@ -3444,7 +3909,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "itemstack",
-      "interactName": "blockItemStack"
+      "interactName": "blockItemStack",
+      "function": (block) => {
+        return block.getItem();
+      }
     },
     "blockMod": {
       "internalName": "integrateddynamics:block_mod",
@@ -3479,7 +3947,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "mod",
-      "interactName": "blockMod"
+      "interactName": "blockMod",
+      "function": (block) => {
+        return block.getModName();
+      }
     },
     "breakSound": {
       "internalName": "integrateddynamics:block_breaksound",
@@ -3513,7 +3984,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "break_sound",
-      "interactName": "blockBreakSound"
+      "interactName": "blockBreakSound",
+      "function": (block) => {
+        return block.getBreakSound();
+      }
     },
     "placeSound": {
       "internalName": "integrateddynamics:block_placesound",
@@ -3547,7 +4021,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "place_sound",
-      "interactName": "blockPlaceSound"
+      "interactName": "blockPlaceSound",
+      "function": (block) => {
+        return block.getPlaceSound();
+      }
     },
     "stepSound": {
       "internalName": "integrateddynamics:block_stepsound",
@@ -3581,7 +4058,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "step_sound",
-      "interactName": "blockStepSound"
+      "interactName": "blockStepSound",
+      "function": (block) => {
+        return block.getStepSound();
+      }
     },
     "blockIsShearable": {
       "internalName": "integrateddynamics:block_isshearable",
@@ -3615,7 +4095,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "is_shearable",
-      "interactName": "blockIsShearable"
+      "interactName": "blockIsShearable",
+      "function": (block) => {
+        return block.isShearable();
+      }
     },
     "plantAge": {
       "internalName": "integrateddynamics:block_plantage",
@@ -3649,7 +4132,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "plant_age",
-      "interactName": "blockPlantAge"
+      "interactName": "blockPlantAge",
+      "function": (block) => {
+        return block.getPlantAge();
+      }
     },
     "blockByName": {
       "internalName": "integrateddynamics:block_blockbyname",
@@ -3682,7 +4168,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "block_by_name",
-      "interactName": "stringBlockByName"
+      "interactName": "stringBlockByName",
+      "function": (name) => {
+        throw new Error("Block by name is infeasible without actually loading minecraft. This is a placeholder function.");
+      }
     },
     "blockProperties": {
       "internalName": "integrateddynamics:block_blockproperties",
@@ -3715,7 +4204,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "block_props",
-      "interactName": "blockProperties"
+      "interactName": "blockProperties",
+      "function": (block) => {
+        return block.getProperties();
+      }
     },
     "blockWithProperties": {
       "internalName": "integrateddynamics:block_blockfromproperties",
@@ -3759,7 +4251,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "block_with_props",
-      "interactName": "blockWithProperties"
+      "interactName": "blockWithProperties",
+      "function": (block) => {
+        return (properties) => {
+          return new Block({properties}, block);
+        }
+      }
     },
     "blockPossibleProperties": {
       "internalName": "integrateddynamics:block_blockpossibleproperties",
