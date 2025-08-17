@@ -4170,7 +4170,7 @@ const operatorRegistry = {
       "symbol": "block_by_name",
       "interactName": "stringBlockByName",
       "function": (name) => {
-        throw new Error("Block by name is infeasible without actually loading minecraft. This is a placeholder function.");
+        throw new Error("Block by name is infeasible without a registry. This is a placeholder function.");
       }
     },
     "blockProperties": {
@@ -4289,7 +4289,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "block_all_props",
-      "interactName": "blockPossibleProperties"
+      "interactName": "blockPossibleProperties",
+      "function": (block) => {
+        throw new Error("Block possible properties is infeasible without a registry. This is a placeholder function.");
+      }
     },
     "blockTag": {
       "internalName": "integrateddynamics:block_tag",
@@ -4327,7 +4330,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "block_tag_names",
-      "interactName": "blockTags"
+      "interactName": "blockTags",
+      "function": (block) => {
+        return block.getTagNames();
+      }
     },
     "blockTagStacks": {
       "internalName": "integrateddynamics:string_blocktag",
@@ -4366,7 +4372,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "block_tag_values",
-      "interactName": "stringBlocksByTag"
+      "interactName": "stringBlocksByTag",
+      "function": (tag) => {
+        throw new Error("Block tag values is infeasible without a registry. This is a placeholder function.");
+      }
     },
     "size": {
       "internalName": "integrateddynamics:itemstack_size",
@@ -4400,7 +4409,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "size",
-      "interactName": "itemstackSize"
+      "interactName": "itemstackSize",
+      "function": (item) => {
+        return item.getSize();
+      }
     },
     "maxSize": {
       "internalName": "integrateddynamics:itemstack_maxsize",
@@ -4434,7 +4446,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "maxsize",
-      "interactName": "itemstackMaxSize"
+      "interactName": "itemstackMaxSize",
+      "function": (item) => {
+        return item.getMaxSize();
+      }
     },
     "isStackable": {
       "internalName": "integrateddynamics:itemstack_stackable",
@@ -4468,7 +4483,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "stackable",
-      "interactName": "itemstackIsStackable"
+      "interactName": "itemstackIsStackable",
+      "function": (item) => {
+        return item.isStackable();
+      }
     },
     "isDamageable": {
       "internalName": "integrateddynamics:itemstack_damageable",
@@ -4502,7 +4520,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "damageable",
-      "interactName": "itemstackIsDamageable"
+      "interactName": "itemstackIsDamageable",
+      "function": (item) => {
+        return item.isDamageable();
+      }
     },
     "damage": {
       "internalName": "integrateddynamics:itemstack_damage",
@@ -4536,7 +4557,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "damage",
-      "interactName": "itemstackDamage"
+      "interactName": "itemstackDamage",
+      "function": (item) => {
+        return item.getDamage();
+      }
     },
     "maxDamage": {
       "internalName": "integrateddynamics:itemstack_maxdamage",
@@ -4570,7 +4594,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "max_damage",
-      "interactName": "itemstackMaxDamage"
+      "interactName": "itemstackMaxDamage",
+      "function": (item) => {
+        return item.getMaxDamage();
+      }
     },
     "enchanted": {
       "internalName": "integrateddynamics:itemstack_enchanted",
@@ -4605,7 +4632,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "enchanted",
-      "interactName": "itemstackIsEnchanted"
+      "interactName": "itemstackIsEnchanted",
+      "function": (item) => {
+        return item.isEnchanted();
+      }
     },
     "enchantable": {
       "internalName": "integrateddynamics:itemstack_enchantable",
@@ -4640,7 +4670,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "enchantable",
-      "interactName": "itemstackIsEnchantable"
+      "interactName": "itemstackIsEnchantable",
+      "function": (item) => {
+        return item.isEnchantable();
+      }
     },
     "repairCost": {
       "internalName": "integrateddynamics:itemstack_repaircost",
@@ -4674,7 +4707,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "repair_cost",
-      "interactName": "itemstackRepairCost"
+      "interactName": "itemstackRepairCost",
+      "function": (item) => {
+        return item.getRepairCost();
+      }
     },
     "rarity": {
       "internalName": "integrateddynamics:itemstack_rarity",
@@ -4708,7 +4744,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "rarity",
-      "interactName": "itemstackRarity"
+      "interactName": "itemstackRarity",
+      "function": (item) => {
+        return item.getRarity();
+      }
     },
     "strengthVsBlock": {
       "internalName": "integrateddynamics:itemstack_strength",
@@ -4753,7 +4792,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "strength",
-      "interactName": "itemstackStrength"
+      "interactName": "itemstackStrength",
+      "function": (item) => {
+        return (block) => {
+          return item.getStrengthVsBlock(block);
+        }
+      }
     },
     "canHarvestBlock": {
       "internalName": "integrateddynamics:itemstack_canharvest",
@@ -4798,7 +4842,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "can_harvest",
-      "interactName": "itemstackCanHarvest"
+      "interactName": "itemstackCanHarvest",
+      "function": (item) => {
+        return (block) => {
+          return item.canHarvestBlock(block);
+        }
+      }
     },
     "itemBlock": {
       "internalName": "integrateddynamics:itemstack_block",
@@ -4832,14 +4881,18 @@ const operatorRegistry = {
         ]
       },
       "symbol": "block",
-      "interactName": "itemstackBlock"
+      "interactName": "itemstackBlock",
+      "function": (item) => {
+        return item.getBlock();
+      }
     },
     "isFluidstack": {
       "internalName": "integrateddynamics:itemstack_isfluidstack",
       "nicknames": [
         "ItemstackIsfluidstack",
         "itemstack_is_fluidstack",
-        "itemstackIsFluidstack"
+        "itemstackIsFluidstack",
+        "itemHasFluid"
       ],
       "parsedSignature": {
         "kind": "Operator",
@@ -4866,7 +4919,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "is_fluidstack",
-      "interactName": "itemstackIsFluidStack"
+      "interactName": "itemstackIsFluidStack",
+      "function": (item) => {
+        return item.hasFluid();
+      }
     },
     "itemFluid": {
       "internalName": "integrateddynamics:itemstack_fluidstack",
@@ -4906,7 +4962,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "fluidstack",
-      "interactName": "itemstackFluidStack"
+      "interactName": "itemstackFluidStack",
+      "function": (item) => {
+        return item.getFluid();
+      }
     },
     "fluidCapacity": {
       "internalName": "integrateddynamics:itemstack_fluidstackcapacity",
@@ -4944,7 +5003,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "fluidstack_capacity",
-      "interactName": "itemstackFluidCapacity"
+      "interactName": "itemstackFluidCapacity",
+      "function": (item) => {
+        return item.getFluidCapacity();
+      }
     },
     "=NBT=": {
       "internalName": "integrateddynamics:itemstack_isnbtequal",
@@ -4989,7 +5051,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "=NBT=",
-      "interactName": "itemstackIsNbtEqual"
+      "interactName": "itemstackIsNbtEqual",
+      "function": (item1) => {
+        return (item2) => {
+          return (JSON.stringify(item1.getNBT()) === JSON.stringify(item2.getNBT()));
+        }
+      }
     },
     "=NoNBT=": {
       "internalName": "integrateddynamics:itemstack_isitemequalnonbt",
@@ -5034,7 +5101,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "=NoNBT=",
-      "interactName": "itemstackIsEqualNonNbt"
+      "interactName": "itemstackIsEqualNonNbt",
+      "function": (item1) => {
+        return (item2) => {
+          return (item1.getUname() === item2.getUname() && item1.getSize() === item2.getSize());
+        }
+      }
     },
     "rawItemEquals": {
       "internalName": "integrateddynamics:itemstack_israwitemequal",
@@ -5079,7 +5151,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "=Raw=",
-      "interactName": "itemstackIsEqualRaw"
+      "interactName": "itemstackIsEqualRaw",
+      "function": (item1) => {
+        return (item2) => {
+          return (item1.getRawName() === item2.getRawName());
+        }
+      }
     },
     "itemMod": {
       "internalName": "integrateddynamics:itemstack_mod",
@@ -5113,7 +5190,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "mod",
-      "interactName": "itemstackMod"
+      "interactName": "itemstackMod",
+      "function": (item) => {
+        return item.getModName();
+      }
     },
     "fuelBurnTime": {
       "internalName": "integrateddynamics:itemstack_burntime",
@@ -5147,7 +5227,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "burn_time",
-      "interactName": "itemstackBurnTime"
+      "interactName": "itemstackBurnTime",
+      "function": (item) => {
+        return item.getFuelBurnTime();
+      }
     },
     "isFuel": {
       "internalName": "integrateddynamics:itemstack_canburn",
@@ -5183,7 +5266,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "can_burn",
-      "interactName": "itemstackCanBurn"
+      "interactName": "itemstackCanBurn",
+      "function": (item) => {
+        return item.isFuel();
+      }
     },
     "itemTagNames": {
       "internalName": "integrateddynamics:itemstack_tag",
@@ -5224,7 +5310,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "item_tag_names",
-      "interactName": "itemstackTags"
+      "interactName": "itemstackTags",
+      "function": (item) => {
+        return item.getTagNames();
+      }
     },
     "itemTagValues": {
       "internalName": "integrateddynamics:string_tag",
@@ -5265,7 +5354,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "item_tag_values",
-      "interactName": "stringItemsByTag"
+      "interactName": "stringItemsByTag",
+      "function": (tag) => {
+        throw new Error("Item tag values is infeasible without a registry. This is a placeholder function.");
+      }
     },
     "itemWithSize": {
       "internalName": "integrateddynamics:itemstack_withsize",
@@ -5311,7 +5403,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "with_size",
-      "interactName": "itemstackWithSize"
+      "interactName": "itemstackWithSize",
+      "function": (item) => {
+        return (size) => {
+          return new item({size}, item);
+        }
+      }
     },
     "isFeContainer": {
       "internalName": "integrateddynamics:itemstack_isfecontainer",
@@ -5347,7 +5444,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "is_fe_container",
-      "interactName": "itemstackIsFeContainer"
+      "interactName": "itemstackIsFeContainer",
+      "function": (item) => {
+        return item.isFeContainer();
+      }
     },
     "storedFe": {
       "internalName": "integrateddynamics:itemstack_storedfe",
@@ -5383,7 +5483,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "stored_fe",
-      "interactName": "itemstackFeStored"
+      "interactName": "itemstackFeStored",
+      "function": (item) => {
+        return item.getFeStored();
+      }
     },
     "feCapacity": {
       "internalName": "integrateddynamics:itemstack_fecapacity",
@@ -5419,7 +5522,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "capacity_fe",
-      "interactName": "itemstackFeCapacity"
+      "interactName": "itemstackFeCapacity",
+      "function": (item) => {
+        return item.getFeCapacity();
+      }
     },
     "hasInventory": {
       "internalName": "integrateddynamics:itemstack_hasinventory",
@@ -5455,7 +5561,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "has_inventory",
-      "interactName": "itemstackHasInventory"
+      "interactName": "itemstackHasInventory",
+      "function": (item) => {
+        return item.hasInventory();
+      }
     },
     "inventorySize": {
       "internalName": "integrateddynamics:itemstack_inventorysize",
@@ -5491,7 +5600,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "inventory_size",
-      "interactName": "itemstackInventorySize"
+      "interactName": "itemstackInventorySize",
+      "function": (item) => {
+        return item.getInventorySize();
+      }
     },
     "itemInventory": {
       "internalName": "integrateddynamics:itemstack_inventory",
@@ -5532,7 +5644,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "inventory",
-      "interactName": "itemstackInventory"
+      "interactName": "itemstackInventory",
+      "function": (item) => {
+        return item.getInventory();
+      }
     },
     "itemByName": {
       "internalName": "integrateddynamics:itemstack_itembyname",
@@ -5567,7 +5682,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "item_by_name",
-      "interactName": "stringItemByName"
+      "interactName": "stringItemByName",
+      "function": (name) => {
+        throw new Error("Item by name is infeasible without a registry. This is a placeholder function.");
+      }
     },
     "itemListCount": {
       "internalName": "integrateddynamics:itemstack_itemlistcount",
@@ -5616,7 +5734,18 @@ const operatorRegistry = {
         ]
       },
       "symbol": "item_list_count",
-      "interactName": "listItemListCount"
+      "interactName": "listItemListCount",
+      "function": (items) => {
+        return (item) => {
+          return items.filter(i => {
+            try {
+              return i.equals(item)
+            } catch(e) {
+              return false;
+            }}
+          ).length;
+        }
+      }
     },
     "itemNBT": {
       "internalName": "integrateddynamics:itemstack_nbt",
@@ -5652,7 +5781,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "NBT()",
-      "interactName": "itemstackNbt"
+      "interactName": "itemstackNbt",
+      "function": (item) => {
+        return item.getNBT();
+      }
     },
     "hasNBT": {
       "internalName": "integrateddynamics:itemstack_hasnbt",
@@ -5688,7 +5820,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "has_nbt",
-      "interactName": "itemstackHasNbt"
+      "interactName": "itemstackHasNbt",
+      "function": (item) => {
+        return item.getNBT() !== null && item.getNBT() !== undefined;
+      }
     },
     "itemNBTKeys": {
       "internalName": "integrateddynamics:itemstack_datakeys",
@@ -5730,7 +5865,14 @@ const operatorRegistry = {
         ]
       },
       "symbol": "data_keys",
-      "interactName": "itemstackDataKeys"
+      "interactName": "itemstackDataKeys",
+      "function": (item) => {
+        const nbt = item.getNBT();
+        if (!nbt) {
+          return [];
+        }
+        return Object.keys(nbt).filter(key => nbt[key] !== undefined && nbt[key] !== null);
+      }
     },
     "itemNBTValue": {
       "internalName": "integrateddynamics:itemstack_datavalue",
@@ -5769,7 +5911,16 @@ const operatorRegistry = {
         ]
       },
       "symbol": "data_value",
-      "interactName": "itemstackDataValue"
+      "interactName": "itemstackDataValue",
+      "function": (item) => {
+        return (key) => {
+          const nbt = item.getNBT();
+          if (!nbt || !nbt.hasOwnProperty(key)) {
+            return null;
+          }
+          return nbt[key];
+        }
+      }
     },
     "itemWithNBT": {
       "internalName": "integrateddynamics:itemstack_withdata",
@@ -5816,7 +5967,16 @@ const operatorRegistry = {
         ]
       },
       "symbol": "with_data",
-      "interactName": "itemstackWithData"
+      "interactName": "itemstackWithData",
+      "function": (item) => {
+        return (key) => {
+          return (value) => {
+            const nbt = item.getNBT() || {};
+            nbt[key] = value;
+            return new item({nbt}, item);
+          }
+        }
+      }
     },
     "itemTooltip": {
       "internalName": "integrateddynamics:itemstack_tooltip",
@@ -5857,7 +6017,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "tooltip",
-      "interactName": "itemstackTooltip"
+      "interactName": "itemstackTooltip",
+      "function": (item) => {
+        return item.getTooltip();
+      }
     },
     "itemEntityTooltip": {
       "internalName": "integrateddynamics:entity_entityitemtooltip",
@@ -5909,7 +6072,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "entity_item_tooltip",
-      "interactName": "entityEntityItemTooltip"
+      "interactName": "entityEntityItemTooltip",
+      "function": (entity) => {
+        return (item) => {
+          return item.getTooltip(entity);
+        }
+      }
     },
     "isMob": {
       "internalName": "integrateddynamics:entity_ismob",
@@ -5943,7 +6111,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "is_mob",
-      "interactName": "entityIsMob"
+      "interactName": "entityIsMob",
+      "function": (entity) => {
+        return entity.isMob();
+      }
     },
     "isAnimal": {
       "internalName": "integrateddynamics:entity_isanimal",
@@ -5977,7 +6148,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "is_animal",
-      "interactName": "entityIsAnimal"
+      "interactName": "entityIsAnimal",
+      "function": (entity) => {
+        return entity.isAnimal();
+      }
     },
     "isItem": {
       "internalName": "integrateddynamics:entity_isitem",
@@ -6011,7 +6185,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "is_item",
-      "interactName": "entityIsItem"
+      "interactName": "entityIsItem",
+      "function": (entity) => {
+        return entity.isItem();
+      }
     },
     "isPlayer": {
       "internalName": "integrateddynamics:entity_isplayer",
@@ -6045,7 +6222,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "is_player",
-      "interactName": "entityIsPlayer"
+      "interactName": "entityIsPlayer",
+      "function": (entity) => {
+        return entity.isPlayer();
+      }
     },
     "isMinecart": {
       "internalName": "integrateddynamics:entity_isminecart",
@@ -6079,7 +6259,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "is_minecart",
-      "interactName": "entityIsMinecart"
+      "interactName": "entityIsMinecart",
+      "function": (entity) => {
+        return entity.isMinecart();
+      }
     },
     "entityItem": {
       "internalName": "integrateddynamics:entity_item",
@@ -6116,7 +6299,14 @@ const operatorRegistry = {
         ]
       },
       "symbol": "item",
-      "interactName": "entityItem"
+      "interactName": "entityItem",
+      "function": (entity) => {
+        if (entity.isItem()) {
+          return entity.getItem();
+        } else {
+          throw new Error("Entity is not an item entity.");
+        }
+      }
     },
     "entityHealth": {
       "internalName": "integrateddynamics:entity_health",
@@ -6151,7 +6341,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "health",
-      "interactName": "entityHealth"
+      "interactName": "entityHealth",
+      "function": (entity) => {
+        return entity.getHealth();
+      }
     },
     "entityWidth": {
       "internalName": "integrateddynamics:entity_width",
@@ -6184,7 +6377,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "width",
-      "interactName": "entityWidth"
+      "interactName": "entityWidth",
+      "function": (entity) => {
+        return entity.getWidth();
+      }
     },
     "entityHeight": {
       "internalName": "integrateddynamics:entity_height",
@@ -6217,7 +6413,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "height",
-      "interactName": "entityHeight"
+      "interactName": "entityHeight",
+      "function": (entity) => {
+        return entity.getHeight();
+      }
     },
     "isBurning": {
       "internalName": "integrateddynamics:entity_isburning",
@@ -6251,7 +6450,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "is_burning",
-      "interactName": "entityEntityIsBurning"
+      "interactName": "entityEntityIsBurning",
+      "function": (entity) => {
+        return entity.isBurning();
+      }
     },
     "isWet": {
       "internalName": "integrateddynamics:entity_iswet",
@@ -6285,7 +6487,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "is_wet",
-      "interactName": "entityIsWet"
+      "interactName": "entityIsWet",
+      "function": (entity) => {
+        return entity.isWet();
+      }
     },
     "isCrouching": {
       "internalName": "integrateddynamics:entity_iscrouching",
@@ -6319,7 +6524,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "is_crouching",
-      "interactName": "entityIsCrouching"
+      "interactName": "entityIsCrouching",
+      "function": (entity) => {
+        return entity.isCrouching();
+      }
     },
     "isEating": {
       "internalName": "integrateddynamics:entity_iseating",
@@ -6353,7 +6561,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "is_eating",
-      "interactName": "entityIsEating"
+      "interactName": "entityIsEating",
+      "function": (entity) => {
+        return entity.isEating();
+      }
     },
     "entityArmor": {
       "internalName": "integrateddynamics:entity_armorinventory",
@@ -6394,7 +6605,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "armor_inventory",
-      "interactName": "entityArmorInventory"
+      "interactName": "entityArmorInventory",
+      "function": (entity) => {
+        return entity.getArmorInventory();
+      }
     },
     "entityInventoryContents": {
       "internalName": "integrateddynamics:entity_inventory",
@@ -6436,7 +6650,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "inventory",
-      "interactName": "entityInventory"
+      "interactName": "entityInventory",
+      "function": (entity) => {
+        return entity.getInventory();
+      }
     },
     "entityModName": {
       "internalName": "integrateddynamics:entity_mod",
@@ -6470,7 +6687,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "mod",
-      "interactName": "entityMod"
+      "interactName": "entityMod",
+      "function": (entity) => {
+        return entity.getModName();
+      }
     },
     "playerTargetBlock": {
       "internalName": "integrateddynamics:entity_targetblock",
@@ -6503,7 +6723,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "target_block",
-      "interactName": "entityTargetBlock"
+      "interactName": "entityTargetBlock",
+      "function": (entity) => {
+        return entity.getTargetBlock();
+      }
     },
     "playerTargetEntity": {
       "internalName": "integrateddynamics:entity_targetentity",
@@ -6536,7 +6759,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "target_entity",
-      "interactName": "entityTargetEntity"
+      "interactName": "entityTargetEntity",
+      "function": (entity) => {
+        return entity.getTargetEntity();
+      }
     },
     "playerHasGuiOpen": {
       "internalName": "integrateddynamics:entity_hasguiopen",
@@ -6569,7 +6795,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "has_gui_open",
-      "interactName": "entityHasGuiOpen"
+      "interactName": "entityHasGuiOpen",
+      "function": (entity) => {
+        return entity.hasGuiOpen();
+      }
     },
     "heldItemMain": {
       "internalName": "integrateddynamics:entity_helditem",
@@ -6603,7 +6832,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "held_item_1",
-      "interactName": "entityHeldItem"
+      "interactName": "entityHeldItem",
+      "function": (entity) => {
+        return entity.getHeldItemMain();
+      }
     },
     "heldItemOff": {
       "internalName": "integrateddynamics:entity_helditemoffhand",
@@ -6637,7 +6869,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "held_item_2",
-      "interactName": "entityHeldItemOffHand"
+      "interactName": "entityHeldItemOffHand",
+      "function": (entity) => {
+        return entity.getHeldItemOffHand();
+      }
     },
     "entitysMounted": {
       "internalName": "integrateddynamics:entity_mounted",
@@ -6676,7 +6911,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "mounted",
-      "interactName": "entityMounted"
+      "interactName": "entityMounted",
+      "function": (entity) => {
+        return entity.isEntityMounted();
+      }
     },
     "itemFrameContents": {
       "internalName": "integrateddynamics:entity_itemframecontents",
@@ -6711,7 +6949,14 @@ const operatorRegistry = {
         ]
       },
       "symbol": "itemframe_contents",
-      "interactName": "entityItemFrameContents"
+      "interactName": "entityItemFrameContents",
+      "function": (entity) => {
+        if (entity.isItemFrame()) {
+          return entity.getItemFrameContents();
+        } else {
+          throw new Error("Entity is not an item frame.");
+        }
+      }
     },
     "itemFrameRotation": {
       "internalName": "integrateddynamics:entity_itemframerotation",
@@ -6746,7 +6991,14 @@ const operatorRegistry = {
         ]
       },
       "symbol": "itemframe_rotation",
-      "interactName": "entityItemFrameRotation"
+      "interactName": "entityItemFrameRotation",
+      "function": (entity) => {
+        if (entity.isItemFrame()) {
+          return entity.getItemFrameRotation();
+        } else {
+          throw new Error("Entity is not an item frame.");
+        }
+      }
     },
     "entityHurtSound": {
       "internalName": "integrateddynamics:entity_hurtsound",
@@ -6779,7 +7031,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "hurtsound",
-      "interactName": "entityHurtSound"
+      "interactName": "entityHurtSound",
+      "function": (entity) => {
+        return entity.getHurtSound();
+      }
     },
     "entityDeathSound": {
       "internalName": "integrateddynamics:entity_deathsound",
@@ -6812,7 +7067,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "deathsound",
-      "interactName": "entityDeathSound"
+      "interactName": "entityDeathSound",
+      "function": (entity) => {
+        return entity.getDeathSound();
+      }
     },
     "entityAge": {
       "internalName": "integrateddynamics:entity_age",
@@ -6845,7 +7103,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "age",
-      "interactName": "entityAge"
+      "interactName": "entityAge",
+      "function": (entity) => {
+        return entity.getAge();
+      }
     },
     "isChild": {
       "internalName": "integrateddynamics:entity_ischild",
@@ -6879,7 +7140,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "is_child",
-      "interactName": "entityIsChild"
+      "interactName": "entityIsChild",
+      "function": (entity) => {
+        return entity.isChild();
+      }
     },
     "canBreed": {
       "internalName": "integrateddynamics:entity_canbreed",
@@ -6913,7 +7177,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "canbreed",
-      "interactName": "entityCanBreed"
+      "interactName": "entityCanBreed",
+      "function": (entity) => {
+        return entity.canBreed();
+      }
     },
     "isInLove": {
       "internalName": "integrateddynamics:entity_isinlove",
@@ -6947,7 +7214,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "is_in_love",
-      "interactName": "entityIsInLove"
+      "interactName": "entityIsInLove",
+      "function": (entity) => {
+        return entity.isInLove();
+      }
     },
     "canBreedWith": {
       "internalName": "integrateddynamics:entity_canbreedwith",
@@ -6992,7 +7262,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "can_breed_with",
-      "interactName": "entityCanBreedWith"
+      "interactName": "entityCanBreedWith",
+      "function": (entity1, entity2) => {
+        return entity1.breadableList.includes(entity2);
+      }
     },
     "entityIsShearable": {
       "internalName": "integrateddynamics:entity_isshearable",
@@ -7026,7 +7299,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "is_shearable",
-      "interactName": "entityIsShearable"
+      "interactName": "entityIsShearable",
+      "function": (entity) => {
+        return entity.isShearable();
+      }
     },
     "entityNBT": {
       "internalName": "integrateddynamics:entity_nbt",
@@ -7059,7 +7335,10 @@ const operatorRegistry = {
         ]
       },
       "symbol": "NBT()",
-      "interactName": "entityNbt"
+      "interactName": "entityNbt",
+      "function": (entity) => {
+        return entity.getNBT();
+      }
     },
     "entityType": {
       "internalName": "integrateddynamics:entity_entitytype",
