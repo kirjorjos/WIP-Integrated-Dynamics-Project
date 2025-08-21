@@ -2,9 +2,272 @@
  * TODO: Test that the operators involving regexes work correctly.
  */
 
+IntegratedDynamicsClasses = {
+  "Item": class Item {
+    static defaultProps = {
+      size: 1,
+      maxSize: 64,
+      stackable: true,
+      damageable: false,
+      damage: 0,
+      maxDamage: 0,
+      enchanted: false,
+      enchantable: false,
+      repairCost: 0,
+      rarity: "",
+      NBT: null,
+      fluid: null,
+      fluidCapacity: 0,
+      uname: "",
+      modName: "",
+      fuelBurnTime: 0,
+      fuel: false,
+      tagNames: [],
+      feContainer: false,
+      feCapacity: 0,
+      feStored: 0,
+      inventory: null,
+      tooltip: [],
+      itemName: ""
+    };
+  
+    constructor(newProps = {}, oldItem = {}) {
+      Object.assign(this, this.defaultProps, oldItem, newProps);
+  
+      for (const key of Object.keys(Item.defaultProps)) {
+        const capKey = key.charAt(0).toUpperCase() + key.slice(1);
+  
+        if (!this.constructor.prototype[`get${capKey}`]) {
+          this.constructor.prototype[`get${capKey}`] = function () {
+            return this[key];
+          };
+        }
+        if (!this.constructor.prototype[`set${capKey}`]) {
+          this.constructor.prototype[`set${capKey}`] = function (value) {
+            this[key] = value;
+          };
+        }
+      }
+    }
+
+    getStrengthVsBlock(block) {
+      throw new Error("getStrengthVsBlock method not implemented");
+    }
+
+    canHarvestBlock(block) {
+      throw new Error("canHarvestBlock method not implemented");
+    }
+
+    equals(other) {
+      if (!(other instanceof Item)) return false;
+      return JSON.stringify(this) === JSON.stringify(other);
+    }
+
+    toString() {
+      return itemName;
+    }
+  },
+
+  "Operator": class Operator extends Function {
+    constructor({internalName, nicknames, parsedSignature: rawSignature, symbol, interactName, function: fn}) {
+      super("...args", "return this.__call__(...args)");
+      this.fn = fn;
+      this.parsedSignature = new InDyClasses.TypeMap(rawSignature);
+      this.internalName = internalName;
+      this.nicknames = nicknames;
+      this.symbol = symbol;
+      this.interactName = interactName;
+    }
+
+
+    __call__(...args) {
+      if (args.length !== this.parsedSignature.args.length) {
+        throw new Error(
+          `Operator expected ${this.parsedSignature.args.length} args, got ${args.length}`
+        );
+      }
+      return this.fn(...args);
+    }
+
+    apply(arg) {
+
+      const parsedSignature = this.parsedSignature.fillFirstArg(arg);
+      const newFn = (...rest) => this.fn(arg, ...rest)
+      return new Operator({
+        internalName: this.internalName,
+        nicknames: this.nicknames,
+        parsedSignature: parsedSignature,
+        symbol: this.symbol,
+        interactName: this.interactName,
+        function: newFn
+      });
+    }
+  },
+
+  "TypeMap": class TypeMap {
+    constructor() {
+      this.aliases = new Map();
+    }
+  
+    find(typeID) {
+      while (this.aliases.has(typeID)) {
+        typeID = this.aliases.get(typeID);
+      }
+      return typeID;
+    }
+  
+    unify(a, b) {
+      if (!a || !b) return;
+  
+      const repA = this._getID(a);
+      const repB = this._getID(b);
+  
+      if (repA && repB) {
+        this.aliases.set(this.find(repA), this.find(repB));
+        return;
+      }
+  
+      if (a.kind === "Concrete" && b.kind === "Concrete") {
+        if (a.name !== b.name) {
+          throw new Error(`Type mismatch: ${a.name} vs ${b.name}`);
+        }
+        if (a.params && b.params) {
+          for (let i = 0; i < Math.min(a.params.length, b.params.length); i++) {
+            this.unify(a.params[i], b.params[i]);
+          }
+        }
+      }
+    }
+  
+    _getID(node) {
+      if (node.kind === "Any") return node.typeID;
+      if (node.kind === "Generic") return node.name;
+      return null;
+    }
+  
+    rewrite(node) {
+      if (node.kind === "Any") {
+        return { ...node, typeID: this.find(node.typeID) };
+      }
+      if (node.kind === "Generic") {
+        return { ...node, name: this.find(node.name) };
+      }
+      if (node.kind === "Function") {
+        return {
+          kind: "Function",
+          from: this.rewrite(node.from),
+          to: this.rewrite(node.to)
+        };
+      }
+      if (node.kind === "Concrete" && node.params) {
+        return {
+          kind: "Concrete",
+          name: node.name,
+          params: node.params.map(p => this.rewrite(p))
+        };
+      }
+      return node;
+    }
+  },
+
+  "ParsedSignature": class ParsedSignature {
+    constructor(ast) {
+      this.ast = ast;
+    }
+  
+    clone() {
+      return new ParsedSignature(JSON.parse(JSON.stringify(this.ast)));
+    }
+  
+    getArity() {
+      if (this.ast.kind === "Function") {
+        let count = 0;
+        let cur = this.ast;
+        while (cur.kind === "Function") {
+          count++;
+          cur = cur.to;
+        }
+        return count;
+      }
+      return this.ast.args?.length ?? 0;
+    }
+  
+    getFirstInput() {
+      if (this.ast.kind === "Function") {
+        return this.ast.from;
+      }
+      return this.ast.args?.[0];
+    }
+
+    getOutput() {
+      if (this.ast.kind === "Function") {
+        return this.ast.to;
+      }
+      return this.ast;
+    }
+  
+    pipe(other, typeMap) {
+      const out = this.getOutput();
+      const input = other.getFirstInput();
+    
+      if (typeMap) typeMap.unify(out, input);
+    
+      const newAst = {
+        kind: "Function",
+        from: typeMap ? typeMap.rewrite(this.getFirstInput()) : this.getFirstInput(),
+        to: typeMap ? typeMap.rewrite(other.getOutput()) : other.getOutput()
+      };
+    
+      return new ParsedSignature(newAst);
+    }
+    
+    apply(typeMap) {
+      if (this.ast.kind !== "Function") {
+        throw new Error("Cannot apply non-function signature");
+      }
+    
+      const newAst = typeMap ? typeMap.rewrite(this.ast.to) : this.ast.to;
+      return new ParsedSignature(newAst);
+    }    
+  
+    flip() {
+      if (this.ast.kind !== "Function" || this.ast.to.kind !== "Function") {
+        throw new Error("Cannot flip non-binary function signature");
+      }
+  
+      const a = this.ast.from;
+      const b = this.ast.to.from;
+      const c = this.ast.to.to;
+  
+      const flipped = {
+        kind: "Function",
+        from: b,
+        to: {
+          kind: "Function",
+          from: a,
+          to: c
+        }
+      };
+  
+      return new ParsedSignature(flipped);
+    }
+  
+    toFlatSignature() {
+      const arr = [];
+      let cur = this.ast;
+      while (cur.kind === "Function") {
+        arr.push(cur.from);
+        cur = cur.to;
+      }
+      arr.push(cur);
+      return arr;
+    }
+  }   
+}
+
 const operatorRegistry = {
   "baseOperators": {
-    "and": {
+    "and": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:logical_and",
       "nicknames": [
         "logicalAnd"
@@ -51,8 +314,8 @@ const operatorRegistry = {
           return bool1 && bool2;
         }
       }
-    },
-    "or": {
+    }),
+    "or": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:logical_or",
       "nicknames": [
         "logicalOr"
@@ -99,8 +362,8 @@ const operatorRegistry = {
           return bool1 || bool2;
         }
       }
-    },
-    "not": {
+    }),
+    "not": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:logical_not",
       "nicknames": [
         "logicalNot"
@@ -134,8 +397,8 @@ const operatorRegistry = {
       "function": (bool) => {
         return !bool;
       }
-    },
-    "nand": {
+    }),
+    "nand": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:logical_nand",
       "nicknames": [
         "logicalNand"
@@ -184,8 +447,8 @@ const operatorRegistry = {
           }
         }
       }
-    },
-    "nor": {
+    }),
+    "nor": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:logical_nor",
       "nicknames": [
         "logicalNor"
@@ -234,8 +497,8 @@ const operatorRegistry = {
           }
         }
       }
-    },
-    "add": {
+    }),
+    "add": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:arithmetic_addition",
       "nicknames": [
         "arithmeticAddition"
@@ -282,8 +545,8 @@ const operatorRegistry = {
           return num1.add(num2);
         }
       }
-    },
-    "subtract": {
+    }),
+    "subtract": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:arithmetic_subtraction",
       "nicknames": [
         "arithmeticSubtraction"
@@ -330,8 +593,8 @@ const operatorRegistry = {
           return num1.subtract(num2);
         }
       }
-    },
-    "multiply": {
+    }),
+    "multiply": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:arithmetic_multiplication",
       "nicknames": [
         "arithmeticMultiplication"
@@ -378,8 +641,8 @@ const operatorRegistry = {
           return num1.multiply(num2);
         }
       }
-    },
-    "divide": {
+    }),
+    "divide": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:arithmetic_division",
       "nicknames": [
         "arithmeticDivision"
@@ -426,8 +689,8 @@ const operatorRegistry = {
           return num1.divide(num2);
         }
       }
-    },
-    "max": {
+    }),
+    "max": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:arithmetic_maximum",
       "nicknames": [
         "arithmeticMaximum"
@@ -474,8 +737,8 @@ const operatorRegistry = {
           return InDyClasses.Number.max(num1, num2);
         }
       }
-    },
-    "min": {
+    }),
+    "min": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:arithmetic_minimum",
       "nicknames": [
         "arithmeticMinimum"
@@ -522,8 +785,8 @@ const operatorRegistry = {
           return InDyClasses.Number.min(num1, num2);
         }
       }
-    },
-    "increment": {
+    }),
+    "increment": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:arithmetic_increment",
       "nicknames": [
         "arithmeticIncrement"
@@ -557,8 +820,8 @@ const operatorRegistry = {
       "function": (num1) => {
           return num1.add(1);
       }
-    },
-    "decrement": {
+    }),
+    "decrement": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:arithmetic_decrement",
       "nicknames": [
         "arithmeticDecrement"
@@ -592,8 +855,8 @@ const operatorRegistry = {
       "function": (num1) => {
         return num1.subtract(1);
       }
-    },
-    "modulus": {
+    }),
+    "modulus": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:arithmetic_modulus",
       "nicknames": [
         "arithmeticModulus"
@@ -640,8 +903,8 @@ const operatorRegistry = {
           return num1.modulus(num2);
         }
       }
-    },
-    "doubleSqrt": {
+    }),
+    "doubleSqrt": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:double_sqrt",
       "nicknames": [],
       "parsedSignature": {
@@ -670,8 +933,8 @@ const operatorRegistry = {
       },
       "symbol": "sqrt",
       "interactName": "doubleSqrt"
-    },
-    "doublePow": {
+    }),
+    "doublePow": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:double_pow",
       "nicknames": [
         "doublePow"
@@ -718,8 +981,8 @@ const operatorRegistry = {
           return base.pow(exponent);
         }
       }
-    },
-    "==": {
+    }),
+    "==": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:relational_equals",
       "nicknames": [
         "relationalEquals"
@@ -766,8 +1029,8 @@ const operatorRegistry = {
           try {return value1.equals(value2)} catch(e) {return value1 === value2};
         }
       }
-    },
-    ">": {
+    }),
+    ">": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:relational_gt",
       "nicknames": [
         "relationalGt"
@@ -814,8 +1077,8 @@ const operatorRegistry = {
           return InDyClasses.Number.gt(num1, num2);
         }
       }
-    },
-    "<": {
+    }),
+    "<": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:relational_lt",
       "nicknames": [
         "relationalLt"
@@ -862,8 +1125,8 @@ const operatorRegistry = {
           return InDyClasses.Number.lt(num1, num2);
         }
       }
-    },
-    "!=": {
+    }),
+    "!=": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:relational_notequals",
       "nicknames": [
         "relationalNotequals"
@@ -910,8 +1173,8 @@ const operatorRegistry = {
           try {return !value1.equals(value2)} catch(e) {return value1 !== value2};
         }
       }
-    },
-    ">=": {
+    }),
+    ">=": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:relational_ge",
       "nicknames": [
         "relationalGe"
@@ -964,8 +1227,8 @@ const operatorRegistry = {
           })();
         };
       }
-    },
-    "<=": {
+    }),
+    "<=": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:relational_le",
       "nicknames": [
         "relationalLe"
@@ -1018,8 +1281,8 @@ const operatorRegistry = {
           })();
         };
       }
-    },
-    "binaryAnd": {
+    }),
+    "binaryAnd": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:binary_and",
       "nicknames": [],
       "parsedSignature": {
@@ -1064,8 +1327,8 @@ const operatorRegistry = {
           return (int1 & int2);
         }
       }
-    },
-    "binaryOr": {
+    }),
+    "binaryOr": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:binary_or",
       "nicknames": [],
       "parsedSignature": {
@@ -1110,8 +1373,8 @@ const operatorRegistry = {
           return (int1 | int2);
         }
       }
-    },
-    "binaryXor": {
+    }),
+    "binaryXor": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:binary_xor",
       "nicknames": [],
       "parsedSignature": {
@@ -1156,8 +1419,8 @@ const operatorRegistry = {
           return (int1 ^ int2);
         }
       }
-    },
-    "binaryComplement": {
+    }),
+    "binaryComplement": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:binary_complement",
       "nicknames": [],
       "parsedSignature": {
@@ -1189,8 +1452,8 @@ const operatorRegistry = {
       "function": (int) => {
         return ~int;
       }
-    },
-    "<<": {
+    }),
+    "<<": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:binary_lshift",
       "nicknames": [
         "binaryLshift"
@@ -1237,8 +1500,8 @@ const operatorRegistry = {
           return (int1 << int2);
         }
       }
-    },
-    ">>": {
+    }),
+    ">>": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:binary_rshift",
       "nicknames": [
         "binaryRshift"
@@ -1285,8 +1548,8 @@ const operatorRegistry = {
           return (int1 >> int2);
         }
       }
-    },
-    ">>>": {
+    }),
+    ">>>": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:binary_rzshift",
       "nicknames": [
         "binaryRzshift"
@@ -1333,8 +1596,8 @@ const operatorRegistry = {
           return (int1 >>> int2);
         }
       }
-    },
-    "stringLength": {
+    }),
+    "stringLength": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:string_length",
       "nicknames": [],
       "parsedSignature": {
@@ -1366,8 +1629,8 @@ const operatorRegistry = {
       "function": (str) => {
         return str.length;
       }
-    },
-    "stringConcat": {
+    }),
+    "stringConcat": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:string_concat",
       "nicknames": [],
       "parsedSignature": {
@@ -1412,8 +1675,8 @@ const operatorRegistry = {
           return str1.concat(str2);
         }
       }
-    },
-    "stringContains": {
+    }),
+    "stringContains": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:string_contains",
       "nicknames": [],
       "parsedSignature": {
@@ -1458,8 +1721,8 @@ const operatorRegistry = {
           return fullString.includes(substring);
         }
       }
-    },
-    "containsRegex": {
+    }),
+    "containsRegex": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:string_contains_regex",
       "nicknames": [],
       "parsedSignature": {
@@ -1505,8 +1768,8 @@ const operatorRegistry = {
           return regex.test(fullString);
         }
       }
-    },
-    "matchesRegex": {
+    }),
+    "matchesRegex": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:string_matches_regex",
       "nicknames": [],
       "parsedSignature": {
@@ -1554,8 +1817,8 @@ const operatorRegistry = {
           return regex.test(fullString);
         }
       }
-    },
-    "stringIndexOf": {
+    }),
+    "stringIndexOf": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:string_index_of",
       "nicknames": [],
       "parsedSignature": {
@@ -1600,8 +1863,8 @@ const operatorRegistry = {
           return fullString.indexOf(substring);
         }
       }
-    },
-    "indexOfRegex": {
+    }),
+    "indexOfRegex": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:string_index_of_regex",
       "nicknames": [
         "stringIndexOfRegex"
@@ -1649,8 +1912,8 @@ const operatorRegistry = {
           const match = fullString.search(regex);
         }
       }
-    },
-    "startsWith": {
+    }),
+    "startsWith": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:string_starts_with",
       "nicknames": [
         "stringStartsWith"
@@ -1697,8 +1960,8 @@ const operatorRegistry = {
           return fullString.startsWith(substring);
         }
       }
-    },
-    "endsWith": {
+    }),
+    "endsWith": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:string_ends_with",
       "nicknames": [
         "stringEndsWith"
@@ -1745,8 +2008,8 @@ const operatorRegistry = {
           return fullString.endsWith(substring);
         }
       }
-    },
-    "stringSplitOn": {
+    }),
+    "stringSplitOn": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:string_split_on",
       "nicknames": [],
       "parsedSignature": {
@@ -1797,8 +2060,8 @@ const operatorRegistry = {
           return fullString.split(delimiter);
         }
       }
-    },
-    "stringSplitOnRegex": {
+    }),
+    "stringSplitOnRegex": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:string_split_on_regex",
       "nicknames": [],
       "parsedSignature": {
@@ -1850,8 +2113,8 @@ const operatorRegistry = {
           return fullString.split(regex);
         }
       }
-    },
-    "substring": {
+    }),
+    "substring": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:string_substring",
       "nicknames": [
         "stringSubstring"
@@ -1911,8 +2174,8 @@ const operatorRegistry = {
           }
         }
       }
-    },
-    "stringRegexGroup": {
+    }),
+    "stringRegexGroup": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:string_regex_group",
       "nicknames": [],
       "parsedSignature": {
@@ -1976,8 +2239,8 @@ const operatorRegistry = {
           }
         }
       }
-    },
-    "stringRegexGroups": {
+    }),
+    "stringRegexGroups": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:string_regex_groups",
       "nicknames": [],
       "parsedSignature": {
@@ -2034,8 +2297,8 @@ const operatorRegistry = {
           }
         }
       }
-    },
-    "stringRegexScan": {
+    }),
+    "stringRegexScan": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:string_regex_scan",
       "nicknames": [],
       "parsedSignature": {
@@ -2111,8 +2374,8 @@ const operatorRegistry = {
           }
         }
       }
-    },
-    "stringReplace": {
+    }),
+    "stringReplace": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:string_replace",
       "nicknames": [],
       "parsedSignature": {
@@ -2170,8 +2433,8 @@ const operatorRegistry = {
           }
         }
       }
-    },
-    "stringReplaceRegex": {
+    }),
+    "stringReplaceRegex": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:string_replace_regex",
       "nicknames": [],
       "parsedSignature": {
@@ -2230,8 +2493,8 @@ const operatorRegistry = {
           }
         }
       }
-    },
-    "stringJoin": {
+    }),
+    "stringJoin": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:string_join",
       "nicknames": [],
       "parsedSignature": {
@@ -2285,8 +2548,8 @@ const operatorRegistry = {
           return stringList.join(delimiter);
         }
       }
-    },
-    "name": {
+    }),
+    "name": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:string_name",
       "nicknames": [
         "namedName",
@@ -2321,8 +2584,8 @@ const operatorRegistry = {
       "function": (named) => {
         return named.toString();
       }
-    },
-    "uname": {
+    }),
+    "uname": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:string_unique_name",
       "nicknames": [
         "uniquelynamedUniquename"
@@ -2356,8 +2619,8 @@ const operatorRegistry = {
       "function": (uniquelyNamed) => {
         return uniquelyNamed.getUniqueName();
       }
-    },
-    "error": {
+    }),
+    "error": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:string_string_error",
       "nicknames": [
         "string_error"
@@ -2391,8 +2654,8 @@ const operatorRegistry = {
       "function": (message) => {
         throw new Error(`Error: ${message}`);
       }
-    },
-    "round": {
+    }),
+    "round": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:number_round",
       "nicknames": [
         "numberRound"
@@ -2426,8 +2689,8 @@ const operatorRegistry = {
       "function": (number) => {
         return number.round();
       }
-    },
-    "ceil": {
+    }),
+    "ceil": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:number_ceil",
       "nicknames": [
         "numberCeil"
@@ -2461,8 +2724,8 @@ const operatorRegistry = {
       "function": (number) => {
         return number.ceil();
       }
-    },
-    "floor": {
+    }),
+    "floor": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:number_floor",
       "nicknames": [
         "numberFloor"
@@ -2496,8 +2759,8 @@ const operatorRegistry = {
       "function": (number) => {
         return number.floor();
       }
-    },
-    "compact": {
+    }),
+    "compact": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:number_compact",
       "nicknames": [
         "numberCompact"
@@ -2531,8 +2794,8 @@ const operatorRegistry = {
       "function": (number) => {
         return number.compact();
       }
-    },
-    "isNull": {
+    }),
+    "isNull": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:general_isnull",
       "nicknames": [
         "nullableIsnull"
@@ -2566,8 +2829,8 @@ const operatorRegistry = {
       "function": (value) => {
         return value === null || value === undefined;
       }
-    },
-    "isNotNull": {
+    }),
+    "isNotNull": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:general_isnotnull",
       "nicknames": [
         "nullableIsnotnull"
@@ -2601,8 +2864,8 @@ const operatorRegistry = {
       "function": (value) => {
         return value !== null && value !== undefined;
       }
-    },
-    "listLength": {
+    }),
+    "listLength": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:list_length",
       "nicknames": [],
       "parsedSignature": {
@@ -2640,8 +2903,8 @@ const operatorRegistry = {
       "function": (list) => {
         return list.length;
       }
-    },
-    "listEmpty": {
+    }),
+    "listEmpty": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:list_empty",
       "nicknames": [],
       "parsedSignature": {
@@ -2679,8 +2942,8 @@ const operatorRegistry = {
       "function": (list) => {
         return list.length === 0;
       }
-    },
-    "listNotEmpty": {
+    }),
+    "listNotEmpty": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:list_notempty",
       "nicknames": [],
       "parsedSignature": {
@@ -2718,8 +2981,8 @@ const operatorRegistry = {
       "function": (list) => {
         return list.length > 0;
       }
-    },
-    "get": {
+    }),
+    "get": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:list_get",
       "nicknames": [
         "listElement"
@@ -2775,8 +3038,8 @@ const operatorRegistry = {
           return list[index];
         }
       }
-    },
-    "getOrDefault": {
+    }),
+    "getOrDefault": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:list_get_or_default",
       "nicknames": [
         "listElementDefault",
@@ -2844,8 +3107,8 @@ const operatorRegistry = {
           return list[index];
         }
       }
-    },
-    "listContains": {
+    }),
+    "listContains": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:list_contains",
       "nicknames": [],
       "parsedSignature": {
@@ -2896,8 +3159,8 @@ const operatorRegistry = {
           return list.includes(element);
         }
       }
-    },
-    "listContainsPredicate": {
+    }),
+    "listContainsPredicate": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:list_contains_p",
       "nicknames": ["listContainsP"],
       "parsedSignature": {
@@ -2968,8 +3231,8 @@ const operatorRegistry = {
           return list.some(item => predicate(item));
         }
       }
-    },
-    "listCount": {
+    }),
+    "listCount": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:list_count",
       "nicknames": [],
       "parsedSignature": {
@@ -3021,8 +3284,8 @@ const operatorRegistry = {
           return list.filter(item => item === element).length;
         }
       }
-    },
-    "listCountPredicate": {
+    }),
+    "listCountPredicate": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:list_count_p",
       "nicknames": [],
       "parsedSignature": {
@@ -3093,8 +3356,8 @@ const operatorRegistry = {
           return list.filter(item => predicate(item)).length;
         }
       }
-    },
-    "append": {
+    }),
+    "append": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:list_append",
       "nicknames": [
         "listAppend"
@@ -3153,8 +3416,8 @@ const operatorRegistry = {
           return [...list, element];
         }
       }
-    },
-    "listConcat": {
+    }),
+    "listConcat": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:list_concat",
       "nicknames": [],
       "parsedSignature": {
@@ -3217,8 +3480,8 @@ const operatorRegistry = {
           return [...list1, ...list2];
         }
       }
-    },
-    "lazybuilt": {
+    }),
+    "lazybuilt": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:list_lazybuilt",
       "nicknames": [
         "listLazybuilt"
@@ -3313,8 +3576,8 @@ const operatorRegistry = {
           return new InfiniteList(builder);
         }
       }
-    },
-    "head": {
+    }),
+    "head": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:list_head",
       "nicknames": [
         "listHead"
@@ -3358,8 +3621,8 @@ const operatorRegistry = {
         }
         return list[0];
       }
-    },
-    "tail": {
+    }),
+    "tail": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:list_tail",
       "nicknames": [
         "listTail"
@@ -3408,8 +3671,8 @@ const operatorRegistry = {
         }
         return list.slice(1);
       }
-    },
-    "listUniqPredicate": {
+    }),
+    "listUniqPredicate": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:list_uniq_p",
       "nicknames": [],
       "parsedSignature": {
@@ -3508,8 +3771,8 @@ const operatorRegistry = {
           });
         }
       }
-    },
-    "listUniq": {
+    }),
+    "listUniq": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:list_uniq",
       "nicknames": [],
       "parsedSignature": {
@@ -3561,8 +3824,8 @@ const operatorRegistry = {
           }
         });
       }
-    },
-    "slice": {
+    }),
+    "slice": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:list_slice",
       "nicknames": [
         "listSlice"
@@ -3637,8 +3900,8 @@ const operatorRegistry = {
           }
         }
       }
-    },
-    "intersection": {
+    }),
+    "intersection": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:list_intersection",
       "nicknames": [
         "listIntersection"
@@ -3704,8 +3967,8 @@ const operatorRegistry = {
           return list2.filter(item => set1.has(item));
         }
       }
-    },
-    "equalsSet": {
+    }),
+    "equalsSet": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:list_equals_set",
       "nicknames": [
         "listEqualsSet"
@@ -3766,8 +4029,8 @@ const operatorRegistry = {
           return set1.equals(set2);
         }
       }
-    },
-    "equalsMultiset": {
+    }),
+    "equalsMultiset": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:list_equals_multiset",
       "nicknames": [
         "listEqualsMultiset"
@@ -3840,8 +4103,8 @@ const operatorRegistry = {
           return true;
         }
       }
-    },
-    "opaque": {
+    }),
+    "opaque": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:block_opaque",
       "nicknames": [
         "BlockOpaque"
@@ -3875,8 +4138,8 @@ const operatorRegistry = {
       "function": (block) => {
         return block.isOpaque();
       }
-    },
-    "blockItem": {
+    }),
+    "blockItem": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:block_itemstack",
       "nicknames": [
         "BlockItemstack",
@@ -3913,8 +4176,8 @@ const operatorRegistry = {
       "function": (block) => {
         return block.getItem();
       }
-    },
-    "blockMod": {
+    }),
+    "blockMod": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:block_mod",
       "nicknames": [
         "BlockModname",
@@ -3951,8 +4214,8 @@ const operatorRegistry = {
       "function": (block) => {
         return block.getModName();
       }
-    },
-    "breakSound": {
+    }),
+    "breakSound": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:block_breaksound",
       "nicknames": [
         "BlockBreaksound",
@@ -3988,8 +4251,8 @@ const operatorRegistry = {
       "function": (block) => {
         return block.getBreakSound();
       }
-    },
-    "placeSound": {
+    }),
+    "placeSound": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:block_placesound",
       "nicknames": [
         "BlockPlacesound",
@@ -4025,8 +4288,8 @@ const operatorRegistry = {
       "function": (block) => {
         return block.getPlaceSound();
       }
-    },
-    "stepSound": {
+    }),
+    "stepSound": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:block_stepsound",
       "nicknames": [
         "BlockStepsound",
@@ -4062,8 +4325,8 @@ const operatorRegistry = {
       "function": (block) => {
         return block.getStepSound();
       }
-    },
-    "blockIsShearable": {
+    }),
+    "blockIsShearable": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:block_isshearable",
       "nicknames": [
         "BlockIsshearable",
@@ -4099,8 +4362,8 @@ const operatorRegistry = {
       "function": (block) => {
         return block.isShearable();
       }
-    },
-    "plantAge": {
+    }),
+    "plantAge": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:block_plantage",
       "nicknames": [
         "BlockPlantage",
@@ -4136,8 +4399,8 @@ const operatorRegistry = {
       "function": (block) => {
         return block.getPlantAge();
       }
-    },
-    "blockByName": {
+    }),
+    "blockByName": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:block_blockbyname",
       "nicknames": [
         "BlockByName",
@@ -4172,8 +4435,8 @@ const operatorRegistry = {
       "function": (name) => {
         throw new Error("Block by name is infeasible without a registry. This is a placeholder function.");
       }
-    },
-    "blockProperties": {
+    }),
+    "blockProperties": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:block_blockproperties",
       "nicknames": [
         "BlockProperties",
@@ -4208,8 +4471,8 @@ const operatorRegistry = {
       "function": (block) => {
         return block.getProperties();
       }
-    },
-    "blockWithProperties": {
+    }),
+    "blockWithProperties": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:block_blockfromproperties",
       "nicknames": [
         "BlockWithProperties",
@@ -4257,8 +4520,8 @@ const operatorRegistry = {
           return new Block({properties}, block);
         }
       }
-    },
-    "blockPossibleProperties": {
+    }),
+    "blockPossibleProperties": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:block_blockpossibleproperties",
       "nicknames": [
         "BlockPossibleProperties",
@@ -4293,8 +4556,8 @@ const operatorRegistry = {
       "function": (block) => {
         throw new Error("Block possible properties is infeasible without a registry. This is a placeholder function.");
       }
-    },
-    "blockTag": {
+    }),
+    "blockTag": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:block_tag",
       "nicknames": [
         "BlockTag"
@@ -4334,8 +4597,8 @@ const operatorRegistry = {
       "function": (block) => {
         return block.getTagNames();
       }
-    },
-    "blockTagStacks": {
+    }),
+    "blockTagStacks": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:string_blocktag",
       "nicknames": [
         "BlockTagStacks",
@@ -4376,8 +4639,8 @@ const operatorRegistry = {
       "function": (tag) => {
         throw new Error("Block tag values is infeasible without a registry. This is a placeholder function.");
       }
-    },
-    "size": {
+    }),
+    "size": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:itemstack_size",
       "nicknames": [
         "ItemstackSize",
@@ -4413,8 +4676,8 @@ const operatorRegistry = {
       "function": (item) => {
         return item.getSize();
       }
-    },
-    "maxSize": {
+    }),
+    "maxSize": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:itemstack_maxsize",
       "nicknames": [
         "ItemstackMaxsize",
@@ -4450,8 +4713,8 @@ const operatorRegistry = {
       "function": (item) => {
         return item.getMaxSize();
       }
-    },
-    "isStackable": {
+    }),
+    "isStackable": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:itemstack_stackable",
       "nicknames": [
         "ItemstackIsstackable",
@@ -4485,10 +4748,10 @@ const operatorRegistry = {
       "symbol": "stackable",
       "interactName": "itemstackIsStackable",
       "function": (item) => {
-        return item.isStackable();
+        return item.getStackable();
       }
-    },
-    "isDamageable": {
+    }),
+    "isDamageable": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:itemstack_damageable",
       "nicknames": [
         "ItemstackIsdamageable",
@@ -4522,10 +4785,10 @@ const operatorRegistry = {
       "symbol": "damageable",
       "interactName": "itemstackIsDamageable",
       "function": (item) => {
-        return item.isDamageable();
+        return item.getDamageable();
       }
-    },
-    "damage": {
+    }),
+    "damage": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:itemstack_damage",
       "nicknames": [
         "ItemstackDamage",
@@ -4561,8 +4824,8 @@ const operatorRegistry = {
       "function": (item) => {
         return item.getDamage();
       }
-    },
-    "maxDamage": {
+    }),
+    "maxDamage": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:itemstack_maxdamage",
       "nicknames": [
         "ItemstackMaxdamage",
@@ -4598,8 +4861,8 @@ const operatorRegistry = {
       "function": (item) => {
         return item.getMaxDamage();
       }
-    },
-    "enchanted": {
+    }),
+    "enchanted": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:itemstack_enchanted",
       "nicknames": [
         "ItemstackIsenchanted",
@@ -4634,10 +4897,10 @@ const operatorRegistry = {
       "symbol": "enchanted",
       "interactName": "itemstackIsEnchanted",
       "function": (item) => {
-        return item.isEnchanted();
+        return item.getEnchanted();
       }
-    },
-    "enchantable": {
+    }),
+    "enchantable": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:itemstack_enchantable",
       "nicknames": [
         "ItemstackIsenchantable",
@@ -4672,10 +4935,10 @@ const operatorRegistry = {
       "symbol": "enchantable",
       "interactName": "itemstackIsEnchantable",
       "function": (item) => {
-        return item.isEnchantable();
+        return item.getEnchantable();
       }
-    },
-    "repairCost": {
+    }),
+    "repairCost": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:itemstack_repaircost",
       "nicknames": [
         "ItemstackRepaircost",
@@ -4711,8 +4974,8 @@ const operatorRegistry = {
       "function": (item) => {
         return item.getRepairCost();
       }
-    },
-    "rarity": {
+    }),
+    "rarity": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:itemstack_rarity",
       "nicknames": [
         "ItemstackRarity",
@@ -4748,8 +5011,8 @@ const operatorRegistry = {
       "function": (item) => {
         return item.getRarity();
       }
-    },
-    "strengthVsBlock": {
+    }),
+    "strengthVsBlock": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:itemstack_strength",
       "nicknames": [
         "ItemstackStrengthVsBlock",
@@ -4798,8 +5061,8 @@ const operatorRegistry = {
           return item.getStrengthVsBlock(block);
         }
       }
-    },
-    "canHarvestBlock": {
+    }),
+    "canHarvestBlock": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:itemstack_canharvest",
       "nicknames": [
         "ItemstackCanHarvestBlock",
@@ -4848,8 +5111,8 @@ const operatorRegistry = {
           return item.canHarvestBlock(block);
         }
       }
-    },
-    "itemBlock": {
+    }),
+    "itemBlock": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:itemstack_block",
       "nicknames": [
         "ItemstackBlock",
@@ -4883,10 +5146,10 @@ const operatorRegistry = {
       "symbol": "block",
       "interactName": "itemstackBlock",
       "function": (item) => {
-        return item.getBlock();
+        return new Block({}, item);
       }
-    },
-    "isFluidstack": {
+    }),
+    "isFluidstack": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:itemstack_isfluidstack",
       "nicknames": [
         "ItemstackIsfluidstack",
@@ -4921,10 +5184,10 @@ const operatorRegistry = {
       "symbol": "is_fluidstack",
       "interactName": "itemstackIsFluidStack",
       "function": (item) => {
-        return item.hasFluid();
+        return item.getFluid() !== null;
       }
-    },
-    "itemFluid": {
+    }),
+    "itemFluid": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:itemstack_fluidstack",
       "nicknames": [
         "ItemstackFluidstack",
@@ -4966,8 +5229,8 @@ const operatorRegistry = {
       "function": (item) => {
         return item.getFluid();
       }
-    },
-    "fluidCapacity": {
+    }),
+    "fluidCapacity": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:itemstack_fluidstackcapacity",
       "nicknames": [
         "ItemstackFluidstackcapacity",
@@ -5007,8 +5270,8 @@ const operatorRegistry = {
       "function": (item) => {
         return item.getFluidCapacity();
       }
-    },
-    "=NBT=": {
+    }),
+    "=NBT=": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:itemstack_isnbtequal",
       "nicknames": [
         "ItemstackIsdataequal",
@@ -5057,8 +5320,8 @@ const operatorRegistry = {
           return (JSON.stringify(item1.getNBT()) === JSON.stringify(item2.getNBT()));
         }
       }
-    },
-    "=NoNBT=": {
+    }),
+    "=NoNBT=": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:itemstack_isitemequalnonbt",
       "nicknames": [
         "ItemstackIsitemequalnodata",
@@ -5107,8 +5370,8 @@ const operatorRegistry = {
           return (item1.getUname() === item2.getUname() && item1.getSize() === item2.getSize());
         }
       }
-    },
-    "rawItemEquals": {
+    }),
+    "rawItemEquals": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:itemstack_israwitemequal",
       "nicknames": [
         "ItemstackIsrawitemequal",
@@ -5154,11 +5417,11 @@ const operatorRegistry = {
       "interactName": "itemstackIsEqualRaw",
       "function": (item1) => {
         return (item2) => {
-          return (item1.getRawName() === item2.getRawName());
+          return (item1.getUname() === item2.getUname());
         }
       }
-    },
-    "itemMod": {
+    }),
+    "itemMod": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:itemstack_mod",
       "nicknames": [
         "ItemstackModname",
@@ -5194,8 +5457,8 @@ const operatorRegistry = {
       "function": (item) => {
         return item.getModName();
       }
-    },
-    "fuelBurnTime": {
+    }),
+    "fuelBurnTime": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:itemstack_burntime",
       "nicknames": [
         "ItemstackFuelburntime",
@@ -5231,8 +5494,8 @@ const operatorRegistry = {
       "function": (item) => {
         return item.getFuelBurnTime();
       }
-    },
-    "isFuel": {
+    }),
+    "isFuel": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:itemstack_canburn",
       "nicknames": [
         "ItemstackCanburn",
@@ -5268,10 +5531,10 @@ const operatorRegistry = {
       "symbol": "can_burn",
       "interactName": "itemstackCanBurn",
       "function": (item) => {
-        return item.isFuel();
+        return item.getFuel();
       }
-    },
-    "itemTagNames": {
+    }),
+    "itemTagNames": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:itemstack_tag",
       "nicknames": [
         "ItemstackTag",
@@ -5314,8 +5577,8 @@ const operatorRegistry = {
       "function": (item) => {
         return item.getTagNames();
       }
-    },
-    "itemTagValues": {
+    }),
+    "itemTagValues": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:string_tag",
       "nicknames": [
         "ItemstackTagStacks",
@@ -5358,8 +5621,8 @@ const operatorRegistry = {
       "function": (tag) => {
         throw new Error("Item tag values is infeasible without a registry. This is a placeholder function.");
       }
-    },
-    "itemWithSize": {
+    }),
+    "itemWithSize": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:itemstack_withsize",
       "nicknames": [
         "ItemstackWithsize",
@@ -5406,11 +5669,11 @@ const operatorRegistry = {
       "interactName": "itemstackWithSize",
       "function": (item) => {
         return (size) => {
-          return new item({size}, item);
+          return new IntegratedDynamicsClasses.Item({size}, item);
         }
       }
-    },
-    "isFeContainer": {
+    }),
+    "isFeContainer": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:itemstack_isfecontainer",
       "nicknames": [
         "ItemstackIsfecontainer",
@@ -5446,10 +5709,10 @@ const operatorRegistry = {
       "symbol": "is_fe_container",
       "interactName": "itemstackIsFeContainer",
       "function": (item) => {
-        return item.isFeContainer();
+        return item.getFeContainer();
       }
-    },
-    "storedFe": {
+    }),
+    "storedFe": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:itemstack_storedfe",
       "nicknames": [
         "ItemstackStoredfe",
@@ -5487,8 +5750,8 @@ const operatorRegistry = {
       "function": (item) => {
         return item.getFeStored();
       }
-    },
-    "feCapacity": {
+    }),
+    "feCapacity": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:itemstack_fecapacity",
       "nicknames": [
         "ItemstackFecapacity",
@@ -5526,8 +5789,8 @@ const operatorRegistry = {
       "function": (item) => {
         return item.getFeCapacity();
       }
-    },
-    "hasInventory": {
+    }),
+    "hasInventory": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:itemstack_hasinventory",
       "nicknames": [
         "ItemstackHasinventory",
@@ -5563,10 +5826,10 @@ const operatorRegistry = {
       "symbol": "has_inventory",
       "interactName": "itemstackHasInventory",
       "function": (item) => {
-        return item.hasInventory();
+        return item.getInventory() !== null;
       }
-    },
-    "inventorySize": {
+    }),
+    "inventorySize": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:itemstack_inventorysize",
       "nicknames": [
         "ItemstackInventorysize",
@@ -5602,10 +5865,10 @@ const operatorRegistry = {
       "symbol": "inventory_size",
       "interactName": "itemstackInventorySize",
       "function": (item) => {
-        return item.getInventorySize();
+        return item.getInventory().length || 0;
       }
-    },
-    "itemInventory": {
+    }),
+    "itemInventory": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:itemstack_inventory",
       "nicknames": [
         "ItemstackInventory",
@@ -5648,8 +5911,8 @@ const operatorRegistry = {
       "function": (item) => {
         return item.getInventory();
       }
-    },
-    "itemByName": {
+    }),
+    "itemByName": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:itemstack_itembyname",
       "nicknames": [
         "ItemstackByName",
@@ -5686,8 +5949,8 @@ const operatorRegistry = {
       "function": (name) => {
         throw new Error("Item by name is infeasible without a registry. This is a placeholder function.");
       }
-    },
-    "itemListCount": {
+    }),
+    "itemListCount": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:itemstack_itemlistcount",
       "nicknames": [
         "ItemstackListCount",
@@ -5746,8 +6009,8 @@ const operatorRegistry = {
           ).length;
         }
       }
-    },
-    "itemNBT": {
+    }),
+    "itemNBT": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:itemstack_nbt",
       "nicknames": [
         "ItemstackData",
@@ -5785,8 +6048,8 @@ const operatorRegistry = {
       "function": (item) => {
         return item.getNBT();
       }
-    },
-    "hasNBT": {
+    }),
+    "hasNBT": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:itemstack_hasnbt",
       "nicknames": [
         "ItemstackHasdata",
@@ -5824,8 +6087,8 @@ const operatorRegistry = {
       "function": (item) => {
         return item.getNBT() !== null && item.getNBT() !== undefined;
       }
-    },
-    "itemNBTKeys": {
+    }),
+    "itemNBTKeys": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:itemstack_datakeys",
       "nicknames": [
         "ItemstackDataKeys",
@@ -5873,8 +6136,8 @@ const operatorRegistry = {
         }
         return Object.keys(nbt).filter(key => nbt[key] !== undefined && nbt[key] !== null);
       }
-    },
-    "itemNBTValue": {
+    }),
+    "itemNBTValue": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:itemstack_datavalue",
       "nicknames": [
         "ItemstackDataValue",
@@ -5921,8 +6184,8 @@ const operatorRegistry = {
           return nbt[key];
         }
       }
-    },
-    "itemWithNBT": {
+    }),
+    "itemWithNBT": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:itemstack_withdata",
       "nicknames": [
         "ItemstackWithData",
@@ -5977,8 +6240,8 @@ const operatorRegistry = {
           }
         }
       }
-    },
-    "itemTooltip": {
+    }),
+    "itemTooltip": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:itemstack_tooltip",
       "nicknames": [
         "ItemstackTooltip",
@@ -6021,8 +6284,8 @@ const operatorRegistry = {
       "function": (item) => {
         return item.getTooltip();
       }
-    },
-    "itemEntityTooltip": {
+    }),
+    "itemEntityTooltip": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:entity_entityitemtooltip",
       "nicknames": [
         "ItemstackEntityTooltip",
@@ -6075,11 +6338,12 @@ const operatorRegistry = {
       "interactName": "entityEntityItemTooltip",
       "function": (entity) => {
         return (item) => {
-          return item.getTooltip(entity);
+          console.warn("Entity item tooltip is not fully supported. Returning item tooltip only.");
+          return item.getTooltip();
         }
       }
-    },
-    "isMob": {
+    }),
+    "isMob": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:entity_ismob",
       "nicknames": [
         "EntityIsmob",
@@ -6113,10 +6377,10 @@ const operatorRegistry = {
       "symbol": "is_mob",
       "interactName": "entityIsMob",
       "function": (entity) => {
-        return entity.isMob();
+        return entity.getMob();
       }
-    },
-    "isAnimal": {
+    }),
+    "isAnimal": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:entity_isanimal",
       "nicknames": [
         "EntityIsanimal",
@@ -6152,8 +6416,8 @@ const operatorRegistry = {
       "function": (entity) => {
         return entity.isAnimal();
       }
-    },
-    "isItem": {
+    }),
+    "isItem": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:entity_isitem",
       "nicknames": [
         "EntityIsitem",
@@ -6189,8 +6453,8 @@ const operatorRegistry = {
       "function": (entity) => {
         return entity.isItem();
       }
-    },
-    "isPlayer": {
+    }),
+    "isPlayer": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:entity_isplayer",
       "nicknames": [
         "EntityIsplayer",
@@ -6226,8 +6490,8 @@ const operatorRegistry = {
       "function": (entity) => {
         return entity.isPlayer();
       }
-    },
-    "isMinecart": {
+    }),
+    "isMinecart": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:entity_isminecart",
       "nicknames": [
         "EntityIsminecart",
@@ -6263,8 +6527,8 @@ const operatorRegistry = {
       "function": (entity) => {
         return entity.isMinecart();
       }
-    },
-    "entityItem": {
+    }),
+    "entityItem": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:entity_item",
       "nicknames": [
         "EntityItemstack",
@@ -6307,8 +6571,8 @@ const operatorRegistry = {
           throw new Error("Entity is not an item entity.");
         }
       }
-    },
-    "entityHealth": {
+    }),
+    "entityHealth": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:entity_health",
       "nicknames": [
         "EntityHealth",
@@ -6345,8 +6609,8 @@ const operatorRegistry = {
       "function": (entity) => {
         return entity.getHealth();
       }
-    },
-    "entityWidth": {
+    }),
+    "entityWidth": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:entity_width",
       "nicknames": [
         "EntityWidth",
@@ -6381,8 +6645,8 @@ const operatorRegistry = {
       "function": (entity) => {
         return entity.getWidth();
       }
-    },
-    "entityHeight": {
+    }),
+    "entityHeight": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:entity_height",
       "nicknames": [
         "EntityHeight",
@@ -6417,8 +6681,8 @@ const operatorRegistry = {
       "function": (entity) => {
         return entity.getHeight();
       }
-    },
-    "isBurning": {
+    }),
+    "isBurning": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:entity_isburning",
       "nicknames": [
         "EntityIsburning",
@@ -6454,8 +6718,8 @@ const operatorRegistry = {
       "function": (entity) => {
         return entity.isBurning();
       }
-    },
-    "isWet": {
+    }),
+    "isWet": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:entity_iswet",
       "nicknames": [
         "EntityIswet",
@@ -6491,8 +6755,8 @@ const operatorRegistry = {
       "function": (entity) => {
         return entity.isWet();
       }
-    },
-    "isCrouching": {
+    }),
+    "isCrouching": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:entity_iscrouching",
       "nicknames": [
         "EntityIscrouching",
@@ -6528,8 +6792,8 @@ const operatorRegistry = {
       "function": (entity) => {
         return entity.isCrouching();
       }
-    },
-    "isEating": {
+    }),
+    "isEating": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:entity_iseating",
       "nicknames": [
         "EntityIseating",
@@ -6565,8 +6829,8 @@ const operatorRegistry = {
       "function": (entity) => {
         return entity.isEating();
       }
-    },
-    "entityArmor": {
+    }),
+    "entityArmor": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:entity_armorinventory",
       "nicknames": [
         "EntityArmorinventory",
@@ -6609,8 +6873,8 @@ const operatorRegistry = {
       "function": (entity) => {
         return entity.getArmorInventory();
       }
-    },
-    "entityInventoryContents": {
+    }),
+    "entityInventoryContents": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:entity_inventory",
       "nicknames": [
         "EntityInventory",
@@ -6654,8 +6918,8 @@ const operatorRegistry = {
       "function": (entity) => {
         return entity.getInventory();
       }
-    },
-    "entityModName": {
+    }),
+    "entityModName": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:entity_mod",
       "nicknames": [
         "EntityModname",
@@ -6691,8 +6955,8 @@ const operatorRegistry = {
       "function": (entity) => {
         return entity.getModName();
       }
-    },
-    "playerTargetBlock": {
+    }),
+    "playerTargetBlock": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:entity_targetblock",
       "nicknames": [
         "PlayerTargetblock",
@@ -6727,8 +6991,8 @@ const operatorRegistry = {
       "function": (entity) => {
         return entity.getTargetBlock();
       }
-    },
-    "playerTargetEntity": {
+    }),
+    "playerTargetEntity": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:entity_targetentity",
       "nicknames": [
         "PlayerTargetentity",
@@ -6763,8 +7027,8 @@ const operatorRegistry = {
       "function": (entity) => {
         return entity.getTargetEntity();
       }
-    },
-    "playerHasGuiOpen": {
+    }),
+    "playerHasGuiOpen": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:entity_hasguiopen",
       "nicknames": [
         "PlayerHasguiopen",
@@ -6799,8 +7063,8 @@ const operatorRegistry = {
       "function": (entity) => {
         return entity.hasGuiOpen();
       }
-    },
-    "heldItemMain": {
+    }),
+    "heldItemMain": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:entity_helditem",
       "nicknames": [
         "EntityHelditemMain",
@@ -6836,8 +7100,8 @@ const operatorRegistry = {
       "function": (entity) => {
         return entity.getHeldItemMain();
       }
-    },
-    "heldItemOff": {
+    }),
+    "heldItemOff": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:entity_helditemoffhand",
       "nicknames": [
         "EntityHelditemOff",
@@ -6873,8 +7137,8 @@ const operatorRegistry = {
       "function": (entity) => {
         return entity.getHeldItemOffHand();
       }
-    },
-    "entitysMounted": {
+    }),
+    "entitysMounted": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:entity_mounted",
       "nicknames": [
         "EntityMounted",
@@ -6915,9 +7179,9 @@ const operatorRegistry = {
       "function": (entity) => {
         return entity.isEntityMounted();
       }
-    },
-    "itemFrameContents": {
-      "internalName": "integrateddynamics:entity_itemframecontents",
+    }),
+    "itemFrameContents": new IntegratedDynamicsClasses.Operator({
+      "internalName": "integrateddynamics:entity_itemframeconte)nts",
       "nicknames": [
         "ItemframeContents",
         "itemframe_contents",
@@ -6957,8 +7221,8 @@ const operatorRegistry = {
           throw new Error("Entity is not an item frame.");
         }
       }
-    },
-    "itemFrameRotation": {
+    }),
+    "itemFrameRotation": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:entity_itemframerotation",
       "nicknames": [
         "ItemframeRotation",
@@ -6999,8 +7263,8 @@ const operatorRegistry = {
           throw new Error("Entity is not an item frame.");
         }
       }
-    },
-    "entityHurtSound": {
+    }),
+    "entityHurtSound": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:entity_hurtsound",
       "nicknames": [
         "EntityHurtsound",
@@ -7035,8 +7299,8 @@ const operatorRegistry = {
       "function": (entity) => {
         return entity.getHurtSound();
       }
-    },
-    "entityDeathSound": {
+    }),
+    "entityDeathSound": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:entity_deathsound",
       "nicknames": [
         "EntityDeathsound",
@@ -7071,8 +7335,8 @@ const operatorRegistry = {
       "function": (entity) => {
         return entity.getDeathSound();
       }
-    },
-    "entityAge": {
+    }),
+    "entityAge": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:entity_age",
       "nicknames": [
         "EntityAge",
@@ -7107,8 +7371,8 @@ const operatorRegistry = {
       "function": (entity) => {
         return entity.getAge();
       }
-    },
-    "isChild": {
+    }),
+    "isChild": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:entity_ischild",
       "nicknames": [
         "EntityIschild",
@@ -7144,8 +7408,8 @@ const operatorRegistry = {
       "function": (entity) => {
         return entity.isChild();
       }
-    },
-    "canBreed": {
+    }),
+    "canBreed": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:entity_canbreed",
       "nicknames": [
         "EntityCanbreed",
@@ -7181,8 +7445,8 @@ const operatorRegistry = {
       "function": (entity) => {
         return entity.canBreed();
       }
-    },
-    "isInLove": {
+    }),
+    "isInLove": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:entity_isinlove",
       "nicknames": [
         "EntityIsinlove",
@@ -7218,8 +7482,8 @@ const operatorRegistry = {
       "function": (entity) => {
         return entity.isInLove();
       }
-    },
-    "canBreedWith": {
+    }),
+    "canBreedWith": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:entity_canbreedwith",
       "nicknames": [
         "EntityCanbreedwith",
@@ -7266,8 +7530,8 @@ const operatorRegistry = {
       "function": (entity1, entity2) => {
         return entity1.breadableList.includes(entity2);
       }
-    },
-    "entityIsShearable": {
+    }),
+    "entityIsShearable": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:entity_isshearable",
       "nicknames": [
         "EntityIsshearable",
@@ -7303,8 +7567,8 @@ const operatorRegistry = {
       "function": (entity) => {
         return entity.isShearable();
       }
-    },
-    "entityNBT": {
+    }),
+    "entityNBT": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:entity_nbt",
       "nicknames": [
         "EntityNbt",
@@ -7339,8 +7603,8 @@ const operatorRegistry = {
       "function": (entity) => {
         return entity.getNBT();
       }
-    },
-    "entityType": {
+    }),
+    "entityType": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:entity_entitytype",
       "nicknames": [
         "EntityType",
@@ -7371,9 +7635,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "entity_type",
-      "interactName": "entityType"
-    },
-    "entityItemList": {
+      "interactName": "entityType",
+      "function": (entity) => {
+        return entity.getEntityType();
+      }
+    }),
+    "entityItemList": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:entity_entityitems",
       "nicknames": [
         "EntityItems",
@@ -7412,9 +7679,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "entity_items",
-      "interactName": "entityItems"
-    },
-    "entityFluids": {
+      "interactName": "entityItems",
+      "function": (entity) => {
+        return entity.getItemList();
+      }
+    }),
+    "entityFluids": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:entity_entityfluids",
       "nicknames": [
         "EntityFluids",
@@ -7451,9 +7721,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "entity_fluids",
-      "interactName": "entityFluids"
-    },
-    "entityEnergyStored": {
+      "interactName": "entityFluids",
+      "function": (entity) => {
+        return entity.getFluids();
+      }
+    }),
+    "entityEnergyStored": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:entity_entityenergystored",
       "nicknames": [
         "EntityEnergyStored",
@@ -7484,9 +7757,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "entity_stored_fe",
-      "interactName": "entityEnergy"
-    },
-    "entityEnergyCapacity": {
+      "interactName": "entityEnergy",
+      "function": (entity) => {
+        return entity.getEnergyStored();
+      }
+    }),
+    "entityEnergyCapacity": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:entity_entityenergycapacity",
       "nicknames": [
         "EntityEnergyCapacity",
@@ -7517,9 +7793,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "entity_capacity_fe",
-      "interactName": "entityEnergyCapacity"
-    },
-    "fluidAmount": {
+      "interactName": "entityEnergyCapacity",
+      "function": (entity) => {
+        return entity.getEnergyCapacity();
+      }
+    }),
+    "fluidAmount": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:fluidstack_amount",
       "nicknames": [
         "FluidstackAmount",
@@ -7554,9 +7833,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "amount",
-      "interactName": "fluidstackAmount"
-    },
-    "fluidBlock": {
+      "interactName": "fluidstackAmount",
+      "function": (fluid) => {
+        return fluid.getAmount();
+      }
+    }),
+    "fluidBlock": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:fluidstack_block",
       "nicknames": [
         "FluidstackBlock",
@@ -7591,9 +7873,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "block",
-      "interactName": "fluidstackBlock"
-    },
-    "fluidLightLevel": {
+      "interactName": "fluidstackBlock",
+      "function": (fluid) => {
+        return fluid.getBlock();
+      }
+    }),
+    "fluidLightLevel": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:fluidstack_light_level",
       "nicknames": [
         "FluidstackLightLevel",
@@ -7628,9 +7913,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "light_level",
-      "interactName": "fluidstackLightLevel"
-    },
-    "fluidDensity": {
+      "interactName": "fluidstackLightLevel",
+      "function": (fluid) => {
+        return fluid.getLightLevel();
+      }
+    }),
+    "fluidDensity": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:fluidstack_density",
       "nicknames": [
         "FluidstackDensity",
@@ -7665,9 +7953,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "density",
-      "interactName": "fluidstackDensity"
-    },
-    "fluidTemperature": {
+      "interactName": "fluidstackDensity",
+      "function": (fluid) => {
+        return fluid.getDensity();
+      }
+    }),
+    "fluidTemperature": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:fluidstack_temperature",
       "nicknames": [
         "FluidstackTemperature",
@@ -7702,9 +7993,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "temperature",
-      "interactName": "fluidstackTemperature"
-    },
-    "fluidViscosity": {
+      "interactName": "fluidstackTemperature",
+      "function": (fluid) => {
+        return fluid.getTemperature();
+      }
+    }),
+    "fluidViscosity": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:fluidstack_viscosity",
       "nicknames": [
         "FluidstackViscosity",
@@ -7739,9 +8033,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "viscosity",
-      "interactName": "fluidstackViscosity"
-    },
-    "isLighterThanAir": {
+      "interactName": "fluidstackViscosity",
+      "function": (fluid) => {
+        return fluid.getViscosity();
+      }
+    }),
+    "isLighterThanAir": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:fluidstack_lighter_than_air",
       "nicknames": [
         "FluidstackIsLighterThanAir",
@@ -7777,9 +8074,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "lighter_than_air",
-      "interactName": "fluidstackIsLighterThanAir"
-    },
-    "fluidRarity": {
+      "interactName": "fluidstackIsLighterThanAir",
+      "function": (fluid) => {
+        return fluid.isLighterThanAir();
+      }
+    }),
+    "fluidRarity": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:fluidstack_rarity",
       "nicknames": [
         "FluidstackRarity",
@@ -7814,9 +8114,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "rarity",
-      "interactName": "fluidstackRarity"
-    },
-    "fluidSoundBucketEmpty": {
+      "interactName": "fluidstackRarity",
+      "function": (fluid) => {
+        return fluid.getRarity();
+      }
+    }),
+    "fluidSoundBucketEmpty": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:fluidstack_sound_bucket_empty",
       "nicknames": [
         "FluidstackSoundBucketEmpty",
@@ -7851,9 +8154,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "sound_bucket_empty",
-      "interactName": "fluidstackBucketEmptySound"
-    },
-    "fluidSoundFluidVaporize": {
+      "interactName": "fluidstackBucketEmptySound",
+      "function": (fluid) => {
+        return fluid.getBucketEmptySound();
+      }
+    }),
+    "fluidSoundFluidVaporize": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:fluidstack_sound_fluid_vaporize",
       "nicknames": [
         "FluidstackSoundFluidVaporize",
@@ -7888,9 +8194,12 @@ const operatorRegistry = {
         ]
       },
       "symbol": "sound_fluid_vaporize",
-      "interactName": "fluidstackFluidVaporizeSound"
-    },
-    "fluidSoundBucketFill": {
+      "interactName": "fluidstackFluidVaporizeSound",
+      "function": (fluid) => {
+        return fluid.getFluidVaporizeSound();
+      }
+    }),
+    "fluidSoundBucketFill": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:fluidstack_sound_bucket_fill",
       "nicknames": [
         "FluidstackSoundBucketFill",
@@ -7926,8 +8235,8 @@ const operatorRegistry = {
       },
       "symbol": "sound_bucket_fill",
       "interactName": "fluidstackBucketFillSound"
-    },
-    "fluidBucket": {
+    }),
+    "fluidBucket": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:fluidstack_bucket",
       "nicknames": [
         "FluidstackBucket",
@@ -7963,8 +8272,8 @@ const operatorRegistry = {
       },
       "symbol": "bucket",
       "interactName": "fluidstackBucket"
-    },
-    "rawFluidEquals": {
+    }),
+    "rawFluidEquals": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:fluidstack_israwfluidequal",
       "nicknames": [
         "FluidstackIsrawfluidequal",
@@ -8012,8 +8321,8 @@ const operatorRegistry = {
       },
       "symbol": "=Raw=",
       "interactName": "fluidstackIsRawEqual"
-    },
-    "fluidModName": {
+    }),
+    "fluidModName": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:fluidstack_mod",
       "nicknames": [
         "FluidstackModname",
@@ -8049,8 +8358,8 @@ const operatorRegistry = {
       },
       "symbol": "mod",
       "interactName": "fluidstackMod"
-    },
-    "fluidNBT": {
+    }),
+    "fluidNBT": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:fluidstack_nbt",
       "nicknames": [
         "FluidstackData",
@@ -8092,8 +8401,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT()",
       "interactName": "fluidstackNbt"
-    },
-    "fluidWithAmount": {
+    }),
+    "fluidWithAmount": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:fluidstack_with_amount",
       "nicknames": [
         "FluidstackWithAmount",
@@ -8140,8 +8449,8 @@ const operatorRegistry = {
       },
       "symbol": "with_amount",
       "interactName": "fluidstackWithAmount"
-    },
-    "fluidNBTKeys": {
+    }),
+    "fluidNBTKeys": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:fluidstack_datakeys",
       "nicknames": [
         "FluidstackDataKeys",
@@ -8189,8 +8498,8 @@ const operatorRegistry = {
       },
       "symbol": "data_keys",
       "interactName": "fluidstackDataKeys"
-    },
-    "fluidNBTValue": {
+    }),
+    "fluidNBTValue": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:fluidstack_datavalue",
       "nicknames": [
         "FluidstackDataValue",
@@ -8243,8 +8552,8 @@ const operatorRegistry = {
       },
       "symbol": "data_value",
       "interactName": "fluidstackDataValue"
-    },
-    "fluidWithNBT": {
+    }),
+    "fluidWithNBT": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:itemstack_withdata",
       "nicknames": [
         "FluidstackWithData",
@@ -8283,8 +8592,8 @@ const operatorRegistry = {
       },
       "symbol": "with_data",
       "interactName": "fluidstackWithData"
-    },
-    "fluidTag": {
+    }),
+    "fluidTag": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:fluidstack_tag",
       "nicknames": [
         "FluidstackTag",
@@ -8324,8 +8633,8 @@ const operatorRegistry = {
       },
       "symbol": "fluid_tag_names",
       "interactName": "fluidstackTags"
-    },
-    "fluidTagStacks": {
+    }),
+    "fluidTagStacks": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:string_fluidtag",
       "nicknames": [
         "FluidstackTagStacks",
@@ -8364,8 +8673,8 @@ const operatorRegistry = {
       },
       "symbol": "fluid_tag_values",
       "interactName": "stringFluidsByTag"
-    },
-    "apply": {
+    }),
+    "apply": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:operator_apply",
       "nicknames": [
         "operatorApply"
@@ -8415,8 +8724,8 @@ const operatorRegistry = {
       "symbol": "apply",
       "interactName": "operatorApply",
       "serializer": "integrateddynamics:curry"
-    },
-    "apply2": {
+    }),
+    "apply2": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:operator_apply2",
       "nicknames": [
         "operatorApply_2"
@@ -8483,8 +8792,8 @@ const operatorRegistry = {
       },
       "symbol": "apply2",
       "interactName": "operatorApply2"
-    },
-    "apply3": {
+    }),
+    "apply3": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:operator_apply3",
       "nicknames": [
         "operatorApply_3"
@@ -8569,8 +8878,8 @@ const operatorRegistry = {
       },
       "symbol": "apply3",
       "interactName": "operatorApply3"
-    },
-    "applyn": {
+    }),
+    "applyn": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:operator_apply_n",
       "nicknames": [
         "operatorApplyN"
@@ -8633,8 +8942,8 @@ const operatorRegistry = {
       },
       "symbol": "apply_n",
       "interactName": "operatorApply_n"
-    },
-    "apply0": {
+    }),
+    "apply0": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:operator_apply0",
       "nicknames": [
         "operatorApply_0"
@@ -8667,8 +8976,8 @@ const operatorRegistry = {
       },
       "symbol": "apply0",
       "interactName": "operatorApply0"
-    },
-    "map": {
+    }),
+    "map": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:operator_map",
       "nicknames": [
         "operatorMap"
@@ -8738,8 +9047,8 @@ const operatorRegistry = {
       },
       "symbol": "map",
       "interactName": "operatorMap"
-    },
-    "filter": {
+    }),
+    "filter": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:operator_filter",
       "nicknames": [
         "operatorFilter"
@@ -8809,8 +9118,8 @@ const operatorRegistry = {
       },
       "symbol": "filter",
       "interactName": "operatorFilter"
-    },
-    "conjunction": {
+    }),
+    "conjunction": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:operator_conjunction",
       "nicknames": [
         "operatorConjunction"
@@ -8900,8 +9209,8 @@ const operatorRegistry = {
       },
       "symbol": ".&&.",
       "interactName": "operatorConjunction"
-    },
-    "disjunction": {
+    }),
+    "disjunction": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:operator_disjunction",
       "nicknames": [
         "operatorDisjunction"
@@ -8991,8 +9300,8 @@ const operatorRegistry = {
       },
       "symbol": ".||.",
       "interactName": "operatorDisjunction"
-    },
-    "negation": {
+    }),
+    "negation": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:operator_negation",
       "nicknames": [
         "operatorNegation"
@@ -9055,8 +9364,8 @@ const operatorRegistry = {
       },
       "symbol": "!.",
       "interactName": "operatorNegation"
-    },
-    "pipe": {
+    }),
+    "pipe": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:operator_pipe",
       "nicknames": [
         "operatorPipe"
@@ -9159,8 +9468,8 @@ const operatorRegistry = {
       "symbol": ".",
       "interactName": "operatorPipe",
       "serializer": "integrateddynamics:combined.pipe"
-    },
-    "pipe.2": {
+    }),
+    "pipe.2": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:operator_pipe2",
       "nicknames": [
         "operatorPipe2",
@@ -9289,8 +9598,8 @@ const operatorRegistry = {
       },
       "symbol": ".2",
       "interactName": "operatorPipe2"
-    },
-    "flip": {
+    }),
+    "flip": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:operator_flip",
       "nicknames": [
         "operatorFlip"
@@ -9384,8 +9693,8 @@ const operatorRegistry = {
       "symbol": "flip",
       "interactName": "operatorFlip",
       "serializer": "integrateddynamics:combined.flip"
-    },
-    "reduce": {
+    }),
+    "reduce": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:operator_reduce",
       "nicknames": [
         "operatorReduce"
@@ -9463,8 +9772,8 @@ const operatorRegistry = {
       },
       "symbol": "reduce",
       "interactName": "operatorReduce"
-    },
-    "reduce1": {
+    }),
+    "reduce1": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:operator_reduce1",
       "nicknames": [
         "operatorReduce1"
@@ -9531,8 +9840,8 @@ const operatorRegistry = {
       },
       "symbol": "reduce1",
       "interactName": "operatorReduce1"
-    },
-    "opByName": {
+    }),
+    "opByName": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:operator_by_name",
       "nicknames": [
         "operatorByName"
@@ -9575,8 +9884,8 @@ const operatorRegistry = {
       },
       "symbol": "op_by_name",
       "interactName": "stringOperatorByName"
-    },
-    "NBTSize": {
+    }),
+    "NBTSize": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_compound_size",
       "nicknames": [
         "nbtCompoundSize"
@@ -9607,8 +9916,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT{}.size",
       "interactName": "nbtSize"
-    },
-    "NBTKeys": {
+    }),
+    "NBTKeys": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_compound_keys",
       "nicknames": [
         "nbtCompoundKeys"
@@ -9645,8 +9954,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT{}.keys",
       "interactName": "nbtKeys"
-    },
-    "NBTHasKey": {
+    }),
+    "NBTHasKey": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_compound_haskey",
       "nicknames": [
         "nbtCompoundHaskey"
@@ -9688,8 +9997,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT{}.has_key",
       "interactName": "nbtHasKey"
-    },
-    "NBTValueType": {
+    }),
+    "NBTValueType": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_compound_type",
       "nicknames": [
         "nbtCompoundValueType"
@@ -9731,8 +10040,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT{}.type",
       "interactName": "nbtType"
-    },
-    "compoundValueAny": {
+    }),
+    "compoundValueAny": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_compound_value_tag",
       "nicknames": [
         "nbtCompoundValueTag"
@@ -9774,8 +10083,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT{}.get_tag",
       "interactName": "nbtGetTag"
-    },
-    "compoundValueBoolean": {
+    }),
+    "compoundValueBoolean": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_compound_value_boolean",
       "nicknames": [
         "nbtCompoundValueBoolean"
@@ -9817,8 +10126,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT{}.get_boolean",
       "interactName": "nbtGetBoolean"
-    },
-    "compoundValueInteger": {
+    }),
+    "compoundValueInteger": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_compound_value_integer",
       "nicknames": [
         "nbtCompoundValueInteger"
@@ -9860,8 +10169,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT{}.get_integer",
       "interactName": "nbtGetInteger"
-    },
-    "compoundValueLong": {
+    }),
+    "compoundValueLong": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_compound_value_long",
       "nicknames": [
         "nbtCompoundValueLong"
@@ -9903,8 +10212,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT{}.get_long",
       "interactName": "nbtGetLong"
-    },
-    "compoundValueDouble": {
+    }),
+    "compoundValueDouble": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_compound_value_double",
       "nicknames": [
         "nbtCompoundValueDouble"
@@ -9946,8 +10255,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT{}.get_double",
       "interactName": "nbtGetDouble"
-    },
-    "compoundValueString": {
+    }),
+    "compoundValueString": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_compound_value_string",
       "nicknames": [
         "nbtCompoundValueString"
@@ -9989,8 +10298,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT{}.get_string",
       "interactName": "nbtGetString"
-    },
-    "compoundValueNBT": {
+    }),
+    "compoundValueNBT": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_compound_value_compound",
       "nicknames": [
         "nbtCompoundValueCompound"
@@ -10032,8 +10341,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT{}.get_compound",
       "interactName": "nbtGetCompound"
-    },
-    "compoundValueListNBT": {
+    }),
+    "compoundValueListNBT": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_compound_value_list_tag",
       "nicknames": [
         "nbtCompoundValueListTag",
@@ -10082,8 +10391,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT{}.get_list_tag",
       "interactName": "nbtGetListTag"
-    },
-    "compoundValueListByte": {
+    }),
+    "compoundValueListByte": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_compound_value_list_byte",
       "nicknames": [
         "nbtCompoundValueListByte"
@@ -10131,8 +10440,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT{}.get_list_byte",
       "interactName": "nbtGetListByte"
-    },
-    "compoundValueListInteger": {
+    }),
+    "compoundValueListInteger": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_compound_value_list_int",
       "nicknames": [
         "nbtCompoundValueListInt"
@@ -10180,8 +10489,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT{}.get_list_int",
       "interactName": "nbtGetListInt"
-    },
-    "compoundValueListLong": {
+    }),
+    "compoundValueListLong": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_compound_value_list_long",
       "nicknames": [
         "nbtCompoundValueListLong"
@@ -10229,8 +10538,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT{}.get_list_long",
       "interactName": "nbtGetListLong"
-    },
-    "NBTWithout": {
+    }),
+    "NBTWithout": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_compound_without",
       "nicknames": [
         "nbtCompoundWithout"
@@ -10272,8 +10581,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT{}.without",
       "interactName": "nbtWithout"
-    },
-    "NBTWithBoolean": {
+    }),
+    "NBTWithBoolean": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_compound_with_boolean",
       "nicknames": [
         "nbtCompoundWithBoolean"
@@ -10326,8 +10635,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT{}.with_boolean",
       "interactName": "nbtWithBoolean"
-    },
-    "NBTWithShort": {
+    }),
+    "NBTWithShort": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_compound_with_short",
       "nicknames": [
         "nbtCompoundWithShort"
@@ -10380,8 +10689,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT{}.with_short",
       "interactName": "nbtWithShort"
-    },
-    "NBTWithInteger": {
+    }),
+    "NBTWithInteger": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_compound_with_integer",
       "nicknames": [
         "nbtCompoundWithInteger"
@@ -10434,8 +10743,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT{}.with_integer",
       "interactName": "nbtWithInteger"
-    },
-    "NBTWithLong": {
+    }),
+    "NBTWithLong": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_compound_with_long",
       "nicknames": [
         "nbtCompoundWithLong"
@@ -10488,8 +10797,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT{}.with_long",
       "interactName": "nbtWithLong"
-    },
-    "NBTWithDouble": {
+    }),
+    "NBTWithDouble": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_compound_with_double",
       "nicknames": [
         "nbtCompoundWithDouble"
@@ -10542,8 +10851,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT{}.with_double",
       "interactName": "nbtWithDouble"
-    },
-    "NBTWithFloat": {
+    }),
+    "NBTWithFloat": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_compound_with_float",
       "nicknames": [
         "nbtCompoundWithFloat"
@@ -10596,8 +10905,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT{}.with_float",
       "interactName": "nbtWithFloat"
-    },
-    "NBTWithString": {
+    }),
+    "NBTWithString": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_compound_with_string",
       "nicknames": [
         "nbtCompoundWithString"
@@ -10650,8 +10959,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT{}.with_string",
       "interactName": "nbtWithString"
-    },
-    "NBTWithNBT": {
+    }),
+    "NBTWithNBT": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_compound_with_tag",
       "nicknames": [
         "nbtCompoundWithCompound"
@@ -10704,8 +11013,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT{}.with_tag",
       "interactName": "nbtWithTag"
-    },
-    "NBTWithNBTList": {
+    }),
+    "NBTWithNBTList": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_compound_with_list_tag",
       "nicknames": [
         "nbtCompoundWithListTag"
@@ -10764,8 +11073,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT{}.with_tag_list",
       "interactName": "nbtWithTagList"
-    },
-    "NBTWithByteList": {
+    }),
+    "NBTWithByteList": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_compound_with_list_byte",
       "nicknames": [
         "nbtCompoundWithListByte"
@@ -10824,8 +11133,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT{}.with_byte_list",
       "interactName": "nbtWithByteList"
-    },
-    "NBTWithIntegerList": {
+    }),
+    "NBTWithIntegerList": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_compound_with_list_int",
       "nicknames": [
         "nbtCompoundWithListInt"
@@ -10884,8 +11193,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT{}.with_int_list",
       "interactName": "nbtWithIntList"
-    },
-    "NBTWithLongList": {
+    }),
+    "NBTWithLongList": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_compound_with_list_long",
       "nicknames": [
         "nbtCompoundWithListLong"
@@ -10944,8 +11253,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT{}.with_list_long",
       "interactName": "nbtWithListLong"
-    },
-    "NBTSubset": {
+    }),
+    "NBTSubset": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_compound_subset",
       "nicknames": [
         "nbtCompoundSubset"
@@ -10987,8 +11296,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT{}.⊆",
       "interactName": "nbtIsSubset"
-    },
-    "NBTUnion": {
+    }),
+    "NBTUnion": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_compound_union",
       "nicknames": [
         "nbtCompoundUnion"
@@ -11030,8 +11339,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT{}.∪",
       "interactName": "nbtUnion"
-    },
-    "NBTIntersection": {
+    }),
+    "NBTIntersection": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_compound_intersection",
       "nicknames": [
         "nbtCompoundIntersection"
@@ -11073,8 +11382,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT{}.∩",
       "interactName": "nbtIntersection"
-    },
-    "NBTMinus": {
+    }),
+    "NBTMinus": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_compound_minus",
       "nicknames": [
         "nbtCompoundMinus"
@@ -11116,8 +11425,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT{}.∖",
       "interactName": "nbtMinus"
-    },
-    "nbtAsBoolean": {
+    }),
+    "nbtAsBoolean": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_as_boolean",
       "nicknames": [],
       "parsedSignature": {
@@ -11146,8 +11455,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT.as_boolean",
       "interactName": "nbtAsBoolean"
-    },
-    "nbtAsByte": {
+    }),
+    "nbtAsByte": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_as_byte",
       "nicknames": [],
       "parsedSignature": {
@@ -11176,8 +11485,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT.as_byte",
       "interactName": "nbtAsByte"
-    },
-    "nbtAsShort": {
+    }),
+    "nbtAsShort": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_as_short",
       "nicknames": [],
       "parsedSignature": {
@@ -11206,8 +11515,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT.as_short",
       "interactName": "nbtAsShort"
-    },
-    "nbtAsInt": {
+    }),
+    "nbtAsInt": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_as_int",
       "nicknames": [],
       "parsedSignature": {
@@ -11236,8 +11545,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT.as_int",
       "interactName": "nbtAsInt"
-    },
-    "nbtAsLong": {
+    }),
+    "nbtAsLong": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_as_long",
       "nicknames": [],
       "parsedSignature": {
@@ -11266,8 +11575,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT.as_long",
       "interactName": "nbtAsLong"
-    },
-    "nbtAsDouble": {
+    }),
+    "nbtAsDouble": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_as_double",
       "nicknames": [],
       "parsedSignature": {
@@ -11296,8 +11605,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT.as_double",
       "interactName": "nbtAsDouble"
-    },
-    "nbtAsFloat": {
+    }),
+    "nbtAsFloat": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_as_float",
       "nicknames": [],
       "parsedSignature": {
@@ -11326,8 +11635,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT.as_float",
       "interactName": "nbtAsFloat"
-    },
-    "nbtAsString": {
+    }),
+    "nbtAsString": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_as_string",
       "nicknames": [],
       "parsedSignature": {
@@ -11356,8 +11665,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT.as_string",
       "interactName": "nbtAsString"
-    },
-    "nbtAsTagList": {
+    }),
+    "nbtAsTagList": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_as_tag_list",
       "nicknames": [],
       "parsedSignature": {
@@ -11392,8 +11701,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT.as_tag_list",
       "interactName": "nbtAsTagList"
-    },
-    "nbtAsByteList": {
+    }),
+    "nbtAsByteList": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_as_byte_list",
       "nicknames": [],
       "parsedSignature": {
@@ -11428,8 +11737,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT.as_byte_list",
       "interactName": "nbtAsByteList"
-    },
-    "nbtAsIntList": {
+    }),
+    "nbtAsIntList": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_as_int_list",
       "nicknames": [],
       "parsedSignature": {
@@ -11464,8 +11773,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT.as_int_list",
       "interactName": "nbtAsIntList"
-    },
-    "nbtAsLongList": {
+    }),
+    "nbtAsLongList": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_as_long_list",
       "nicknames": [],
       "parsedSignature": {
@@ -11500,8 +11809,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT.as_long_list",
       "interactName": "nbtAsLongList"
-    },
-    "nbtFromBoolean": {
+    }),
+    "nbtFromBoolean": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_from_boolean",
       "nicknames": [],
       "parsedSignature": {
@@ -11530,8 +11839,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT.from_boolean",
       "interactName": "booleanAsNbt"
-    },
-    "nbtFromShort": {
+    }),
+    "nbtFromShort": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_from_short",
       "nicknames": [],
       "parsedSignature": {
@@ -11560,8 +11869,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT.from_short",
       "interactName": "shortAsNbt"
-    },
-    "nbtFromByte": {
+    }),
+    "nbtFromByte": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_from_byte",
       "nicknames": [],
       "parsedSignature": {
@@ -11590,8 +11899,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT.from_byte",
       "interactName": "byteAsNbt"
-    },
-    "nbtFromInt": {
+    }),
+    "nbtFromInt": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_from_int",
       "nicknames": [],
       "parsedSignature": {
@@ -11620,8 +11929,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT.from_int",
       "interactName": "integerAsNbt"
-    },
-    "nbtFromLong": {
+    }),
+    "nbtFromLong": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_from_long",
       "nicknames": [],
       "parsedSignature": {
@@ -11650,8 +11959,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT.from_long",
       "interactName": "longAsNbt"
-    },
-    "nbtFromDouble": {
+    }),
+    "nbtFromDouble": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_from_double",
       "nicknames": [],
       "parsedSignature": {
@@ -11680,8 +11989,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT.from_double",
       "interactName": "doubleAsNbt"
-    },
-    "nbtFromFloat": {
+    }),
+    "nbtFromFloat": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_from_float",
       "nicknames": [],
       "parsedSignature": {
@@ -11710,8 +12019,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT.from_float",
       "interactName": "floatAsNbt"
-    },
-    "nbtFromString": {
+    }),
+    "nbtFromString": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_from_string",
       "nicknames": [],
       "parsedSignature": {
@@ -11740,8 +12049,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT.from_string",
       "interactName": "stringAsNbt"
-    },
-    "nbtFromTagList": {
+    }),
+    "nbtFromTagList": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_from_tag_list",
       "nicknames": [],
       "parsedSignature": {
@@ -11776,8 +12085,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT.from_tag_list",
       "interactName": "tagListAsNbt"
-    },
-    "nbtFromByteList": {
+    }),
+    "nbtFromByteList": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_from_byte_list",
       "nicknames": [],
       "parsedSignature": {
@@ -11812,8 +12121,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT.from_byte_list",
       "interactName": "byteListAsNbt"
-    },
-    "nbtFromIntList": {
+    }),
+    "nbtFromIntList": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_from_int_list",
       "nicknames": [],
       "parsedSignature": {
@@ -11848,8 +12157,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT.from_int_list",
       "interactName": "intListAsNbt"
-    },
-    "nbtFromLongList": {
+    }),
+    "nbtFromLongList": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_from_long_list",
       "nicknames": [],
       "parsedSignature": {
@@ -11884,8 +12193,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT.from_long_list",
       "interactName": "longListAsNbt"
-    },
-    "nbtPathMatchFirst": {
+    }),
+    "nbtPathMatchFirst": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_path_match_first",
       "nicknames": [],
       "parsedSignature": {
@@ -11925,8 +12234,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT.path_match_first",
       "interactName": "stringNbtPathMatchFirst"
-    },
-    "nbtPathMatchAll": {
+    }),
+    "nbtPathMatchAll": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_path_match_all",
       "nicknames": [],
       "parsedSignature": {
@@ -11972,8 +12281,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT.path_match_all",
       "interactName": "stringNbtPathMatchAll"
-    },
-    "NBTPathTest": {
+    }),
+    "NBTPathTest": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_path_test",
       "nicknames": [],
       "parsedSignature": {
@@ -12013,8 +12322,8 @@ const operatorRegistry = {
       },
       "symbol": "NBT.path_test",
       "interactName": "stringNbtPathTest"
-    },
-    "ingredientsItems": {
+    }),
+    "ingredientsItems": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:ingredients_items",
       "nicknames": [],
       "parsedSignature": {
@@ -12049,8 +12358,8 @@ const operatorRegistry = {
       },
       "symbol": "Ingr.items",
       "interactName": "ingredientsItems"
-    },
-    "ingredientsFluids": {
+    }),
+    "ingredientsFluids": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:ingredients_fluids",
       "nicknames": [],
       "parsedSignature": {
@@ -12085,8 +12394,8 @@ const operatorRegistry = {
       },
       "symbol": "Ingr.fluids",
       "interactName": "ingredientsFluids"
-    },
-    "ingredientsEnergies": {
+    }),
+    "ingredientsEnergies": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:ingredients_energies",
       "nicknames": [],
       "parsedSignature": {
@@ -12121,8 +12430,8 @@ const operatorRegistry = {
       },
       "symbol": "Ingr.energies",
       "interactName": "ingredientsEnergies"
-    },
-    "ingredientsWithItem": {
+    }),
+    "ingredientsWithItem": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:ingredients_with_item",
       "nicknames": [],
       "parsedSignature": {
@@ -12173,8 +12482,8 @@ const operatorRegistry = {
       },
       "symbol": "Ingr.with_item",
       "interactName": "ingredientsWithItem"
-    },
-    "ingredientsWithFluid": {
+    }),
+    "ingredientsWithFluid": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:ingredients_with_fluid",
       "nicknames": [],
       "parsedSignature": {
@@ -12225,8 +12534,8 @@ const operatorRegistry = {
       },
       "symbol": "Ingr.with_fluid",
       "interactName": "ingredientsWithFluid"
-    },
-    "ingredientsWithEnergy": {
+    }),
+    "ingredientsWithEnergy": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:ingredients_with_energy",
       "nicknames": [],
       "parsedSignature": {
@@ -12277,8 +12586,8 @@ const operatorRegistry = {
       },
       "symbol": "Ingr.with_energy",
       "interactName": "ingredientsWithEnergy"
-    },
-    "ingredientsWithItems": {
+    }),
+    "ingredientsWithItems": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:ingredients_with_items",
       "nicknames": [],
       "parsedSignature": {
@@ -12335,8 +12644,8 @@ const operatorRegistry = {
       },
       "symbol": "Ingr.with_items",
       "interactName": "ingredientsWithItems"
-    },
-    "ingredientsWithFluids": {
+    }),
+    "ingredientsWithFluids": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:ingredients_with_fluids",
       "nicknames": [],
       "parsedSignature": {
@@ -12393,8 +12702,8 @@ const operatorRegistry = {
       },
       "symbol": "Ingr.with_fluids",
       "interactName": "ingredientsWithFluids"
-    },
-    "ingredientsWithEnergies": {
+    }),
+    "ingredientsWithEnergies": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:ingredients_with_energies",
       "nicknames": [],
       "parsedSignature": {
@@ -12451,8 +12760,8 @@ const operatorRegistry = {
       },
       "symbol": "Ingr.with_energies",
       "interactName": "ingredientsWithEnergies"
-    },
-    "recipeInput": {
+    }),
+    "recipeInput": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:recipe_input",
       "nicknames": [],
       "parsedSignature": {
@@ -12481,8 +12790,8 @@ const operatorRegistry = {
       },
       "symbol": "recipe_in",
       "interactName": "recipeInput"
-    },
-    "recipeOutput": {
+    }),
+    "recipeOutput": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:recipe_output",
       "nicknames": [],
       "parsedSignature": {
@@ -12511,8 +12820,8 @@ const operatorRegistry = {
       },
       "symbol": "recipe_out",
       "interactName": "recipeOutput"
-    },
-    "recipeWithInput": {
+    }),
+    "recipeWithInput": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:recipe_with_input",
       "nicknames": [],
       "parsedSignature": {
@@ -12552,8 +12861,8 @@ const operatorRegistry = {
       },
       "symbol": "Recipe.with_in",
       "interactName": "recipeWithInput"
-    },
-    "recipeWithOutput": {
+    }),
+    "recipeWithOutput": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:recipe_with_output",
       "nicknames": [],
       "parsedSignature": {
@@ -12593,8 +12902,8 @@ const operatorRegistry = {
       },
       "symbol": "Recipe.with_out",
       "interactName": "recipeWithOutput"
-    },
-    "recipeWithInputOutput": {
+    }),
+    "recipeWithInputOutput": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:recipe_with_input_output",
       "nicknames": [],
       "parsedSignature": {
@@ -12634,8 +12943,8 @@ const operatorRegistry = {
       },
       "symbol": "Recipe.with_io",
       "interactName": "ingredientsWithInputOutput"
-    },
-    "parseBoolean": {
+    }),
+    "parseBoolean": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:operator.integrateddynamics.parse.valuetype.integrateddynamics.boolean",
       "nicknames": [],
       "parsedSignature": {
@@ -12665,8 +12974,8 @@ const operatorRegistry = {
       },
       "symbol": "parse_boolean",
       "interactName": "stringParseAsBoolean"
-    },
-    "parseDouble": {
+    }),
+    "parseDouble": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:operator.integrateddynamics.parse.valuetype.integrateddynamics.double",
       "nicknames": [],
       "parsedSignature": {
@@ -12696,8 +13005,8 @@ const operatorRegistry = {
       },
       "symbol": "parse_double",
       "interactName": "stringParseAsDouble"
-    },
-    "parseInteger": {
+    }),
+    "parseInteger": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:operator.integrateddynamics.parse.valuetype.integrateddynamics.integer",
       "nicknames": [],
       "parsedSignature": {
@@ -12727,8 +13036,8 @@ const operatorRegistry = {
       },
       "symbol": "parse_integer",
       "interactName": "stringParseAsInteger"
-    },
-    "parseLong": {
+    }),
+    "parseLong": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:operator.integrateddynamics.parse.valuetype.integrateddynamics.long",
       "nicknames": [],
       "parsedSignature": {
@@ -12758,8 +13067,8 @@ const operatorRegistry = {
       },
       "symbol": "parse_long",
       "interactName": "stringParseAsLong"
-    },
-    "parseNBT": {
+    }),
+    "parseNBT": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:operator.integrateddynamics.parse.valuetype.integrateddynamics.nbt",
       "nicknames": [],
       "parsedSignature": {
@@ -12789,8 +13098,8 @@ const operatorRegistry = {
       },
       "symbol": "parse_nbt",
       "interactName": "stringParseAsNbt"
-    },
-    "choice": {
+    }),
+    "choice": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:general_choice",
       "nicknames": [
         "generalChoice"
@@ -12846,8 +13155,8 @@ const operatorRegistry = {
       },
       "symbol": "?",
       "interactName": "booleanChoice"
-    },
-    "generalIdentity": {
+    }),
+    "generalIdentity": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:general_identity",
       "nicknames": [],
       "parsedSignature": {
@@ -12878,8 +13187,8 @@ const operatorRegistry = {
       },
       "symbol": "id",
       "interactName": "anyIdentity"
-    },
-    "generalConstant": {
+    }),
+    "generalConstant": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:general_constant",
       "nicknames": [],
       "parsedSignature": {
@@ -12922,8 +13231,8 @@ const operatorRegistry = {
       },
       "symbol": "K",
       "interactName": "anyConstant"
-    },
-    "integerToDouble": {
+    }),
+    "integerToDouble": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:operator.integrateddynamics.castintegrateddynamics_integer__integrateddynamics_double",
       "nicknames": [
         "intToDouble",
@@ -12955,8 +13264,8 @@ const operatorRegistry = {
       },
       "symbol": "()",
       "interactName": "integerIntegerToDouble"
-    },
-    "integerToLong": {
+    }),
+    "integerToLong": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:operator.integrateddynamics.castintegrateddynamics_integer__integrateddynamics_long",
       "nicknames": [
         "intToLong",
@@ -12988,8 +13297,8 @@ const operatorRegistry = {
       },
       "symbol": "()",
       "interactName": "integerIntegerToLong"
-    },
-    "doubleToInteger": {
+    }),
+    "doubleToInteger": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:operator.integrateddynamics.castintegrateddynamics_double__integrateddynamics_integer",
       "nicknames": [
         "doubleToInt",
@@ -13021,8 +13330,8 @@ const operatorRegistry = {
       },
       "symbol": "()",
       "interactName": "doubleDoubleToInteger"
-    },
-    "doubleToLong": {
+    }),
+    "doubleToLong": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:operator.integrateddynamics.castintegrateddynamics_double__integrateddynamics_long",
       "nicknames": [
         "doubleToLong"
@@ -13053,8 +13362,8 @@ const operatorRegistry = {
       },
       "symbol": "()",
       "interactName": "doubleDoubleToLong"
-    },
-    "longToInteger": {
+    }),
+    "longToInteger": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:operator.integrateddynamics.castintegrateddynamics_long__integrateddynamics_integer",
       "nicknames": [
         "longToInt",
@@ -13086,8 +13395,8 @@ const operatorRegistry = {
       },
       "symbol": "()",
       "interactName": "longLongToInteger"
-    },
-    "longToDouble": {
+    }),
+    "longToDouble": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:operator.integrateddynamics.castintegrateddynamics_long__integrateddynamics_double",
       "nicknames": [
         "longToDouble",
@@ -13119,7 +13428,7 @@ const operatorRegistry = {
       },
       "symbol": "()",
       "interactName": "longLongToDouble"
-    }
+    })
   },
   "typeSerializers": {
     "int": {
