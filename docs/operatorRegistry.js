@@ -10183,7 +10183,10 @@ const operatorRegistry = {
         ]
       }, globalMap),
       "symbol": "NBT{}.size",
-      "interactName": "nbtSize"
+      "interactName": "nbtSize",
+      "function": (nbt) => {
+        return Object.keys(nbt).length;
+      }
     }),
     "NBTKeys": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_compound_keys",
@@ -10221,7 +10224,10 @@ const operatorRegistry = {
         ]
       }, globalMap),
       "symbol": "NBT{}.keys",
-      "interactName": "nbtKeys"
+      "interactName": "nbtKeys",
+      "function": (nbt) => {
+        return Object.keys(nbt);
+      }
     }),
     "NBTHasKey": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_compound_haskey",
@@ -10264,7 +10270,12 @@ const operatorRegistry = {
         ]
       }, globalMap),
       "symbol": "NBT{}.has_key",
-      "interactName": "nbtHasKey"
+      "interactName": "nbtHasKey",
+      "function": (nbt) => {
+        return (key) => {
+          return nbt.hasOwnProperty(key);
+        };
+      }
     }),
     "NBTValueType": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_compound_type",
@@ -10307,7 +10318,14 @@ const operatorRegistry = {
         ]
       }, globalMap),
       "symbol": "NBT{}.type",
-      "interactName": "nbtType"
+      "interactName": "nbtType",
+      "function": (nbt) => {
+        return (key) => {
+          if (!nbt.hasOwnProperty(key)) {
+            throw new Error(`${key} does not exist in ${JSON.stringify(nbt)}`);
+          }
+        }
+      }
     }),
     "compoundValueAny": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_compound_value_tag",
@@ -10350,7 +10368,12 @@ const operatorRegistry = {
         ]
       }, globalMap),
       "symbol": "NBT{}.get_tag",
-      "interactName": "nbtGetTag"
+      "interactName": "nbtGetTag",
+      "function": (nbt) => {
+        return (key) => {
+          return nbt[key];
+        }
+      }
     }),
     "compoundValueBoolean": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_compound_value_boolean",
@@ -10393,7 +10416,12 @@ const operatorRegistry = {
         ]
       }, globalMap),
       "symbol": "NBT{}.get_boolean",
-      "interactName": "nbtGetBoolean"
+      "interactName": "nbtGetBoolean",
+      "function": (nbt) => {
+        return (key) => {
+          return nbt[key];
+        }
+      }
     }),
     "compoundValueInteger": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_compound_value_integer",
@@ -10436,7 +10464,16 @@ const operatorRegistry = {
         ]
       }, globalMap),
       "symbol": "NBT{}.get_integer",
-      "interactName": "nbtGetInteger"
+      "interactName": "nbtGetInteger",
+      "function": (nbt) => {
+        return (key) => {
+          let value = nbt[key];
+          if (value.type === "integer") {
+            return IntegratedDynamicsClasses.Integer(value.value);
+          }
+          throw new Error(`${key} is not an integer in ${nbt.stringify()}`);
+        }
+      }
     }),
     "compoundValueLong": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_compound_value_long",
@@ -10479,7 +10516,16 @@ const operatorRegistry = {
         ]
       }, globalMap),
       "symbol": "NBT{}.get_long",
-      "interactName": "nbtGetLong"
+      "interactName": "nbtGetLong",
+      "function": (nbt) => {
+        return (key) => {
+          let value = nbt[key];
+          if (value.type === "long") {
+            return new IntegratedDynamicsClasses.Long(value.value);
+          }
+          throw new Error(`${key} is not a long in ${nbt.stringify(nbt)}`);
+        }
+      }
     }),
     "compoundValueDouble": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_compound_value_double",
@@ -10522,7 +10568,16 @@ const operatorRegistry = {
         ]
       }, globalMap),
       "symbol": "NBT{}.get_double",
-      "interactName": "nbtGetDouble"
+      "interactName": "nbtGetDouble",
+      "function": (nbt) => {
+        return (key) => {
+          let value = nbt[key];
+          if (value.type === "double") {
+            return IntegratedDynamicsClasses.Double(value.value);
+          }
+          throw new Error(`${key} is not a double in ${nbt.stringify()}`);
+        }
+      }
     }),
     "compoundValueString": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_compound_value_string",
@@ -10565,7 +10620,12 @@ const operatorRegistry = {
         ]
       }, globalMap),
       "symbol": "NBT{}.get_string",
-      "interactName": "nbtGetString"
+      "interactName": "nbtGetString",
+      "function": (nbt) => {
+        return (key) => {
+          return nbt[key];
+        }
+      }
     }),
     "compoundValueNBT": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_compound_value_compound",
@@ -10608,7 +10668,12 @@ const operatorRegistry = {
         ]
       }, globalMap),
       "symbol": "NBT{}.get_compound",
-      "interactName": "nbtGetCompound"
+      "interactName": "nbtGetCompound",
+      "function": (nbt) => {
+        return (key) => {
+          return new IntegratedDynamicsClasses.NBT(nbt[key]);
+        }
+      }
     }),
     "compoundValueListNBT": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_compound_value_list_tag",
@@ -10658,7 +10723,15 @@ const operatorRegistry = {
         ]
       }, globalMap),
       "symbol": "NBT{}.get_list_tag",
-      "interactName": "nbtGetListTag"
+      "interactName": "nbtGetListTag",
+      "function": (nbt) => {
+        return (key) => {
+          let value = nbt[key];
+          let list = value.list;
+          if (value.ListType != "nbt") throw new Error(`${key} is not a list of NBT in ${nbt.stringify()}`);
+          return list.map(v => new IntegratedDynamicsClasses.NBT(v));
+        }
+      }
     }),
     "compoundValueListByte": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_compound_value_list_byte",
@@ -10707,7 +10780,15 @@ const operatorRegistry = {
         ]
       }, globalMap),
       "symbol": "NBT{}.get_list_byte",
-      "interactName": "nbtGetListByte"
+      "interactName": "nbtGetListByte",
+      "function": (nbt) => {
+        return (key) => {
+          let value = nbt[key];
+          let list = value.list;
+          if (value.ListType != "byte") throw new Error(`${key} is not a list of byte in ${nbt.stringify()}`);
+          return list.map(v => IntegratedDynamicsClasses.Integer(v));
+        }
+      }
     }),
     "compoundValueListInteger": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_compound_value_list_int",
@@ -10756,7 +10837,15 @@ const operatorRegistry = {
         ]
       }, globalMap),
       "symbol": "NBT{}.get_list_int",
-      "interactName": "nbtGetListInt"
+      "interactName": "nbtGetListInt",
+      "function": (nbt) => {
+        return (key) => {
+          let value = nbt[key];
+          let list = value.list;
+          if (value.ListType != "int") throw new Error(`${key} is not a list of int in ${nbt.stringify()}`);
+          return list.map(v => IntegratedDynamicsClasses.Integer(v));
+        }
+      }
     }),
     "compoundValueListLong": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_compound_value_list_long",
@@ -10805,7 +10894,15 @@ const operatorRegistry = {
         ]
       }, globalMap),
       "symbol": "NBT{}.get_list_long",
-      "interactName": "nbtGetListLong"
+      "interactName": "nbtGetListLong",
+      "function": (nbt) => {
+        return (key) => {
+          let value = nbt[key];
+          let list = value.list;
+          if (value.ListType != "long") throw new Error(`${key} is not a list of long in ${nbt.stringify()}`);
+          return list.map(v => new IntegratedDynamicsClasses.Long(v));
+        }
+      }
     }),
     "NBTWithout": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_compound_without",
@@ -10848,7 +10945,12 @@ const operatorRegistry = {
         ]
       }, globalMap),
       "symbol": "NBT{}.without",
-      "interactName": "nbtWithout"
+      "interactName": "nbtWithout",
+      "function": (nbt) => {
+        return (key) => {
+          return nbt.remove(key);
+        }
+      }
     }),
     "NBTWithBoolean": new IntegratedDynamicsClasses.Operator({
       "internalName": "integrateddynamics:nbt_compound_with_boolean",
