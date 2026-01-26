@@ -366,8 +366,11 @@ describe("TestOperatorOperators", () => {
       oPipeFlip,
       oLogicalAnd
     );
+    const oPipeFlip2 = new operatorRegistry.OPERATOR_FLIP().evaluate(
+      new operatorRegistry.OPERATOR_PIPE()
+    );
     const oThreeAnd = new operatorRegistry.OPERATOR_APPLY_2().evaluate(
-      oPipeFlip,
+      oPipeFlip2,
       oThreeAnd_1,
       oLogicalAnd
     );
