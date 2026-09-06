@@ -199,18 +199,51 @@ describe("getVisibleListEntries", () => {
     expect(getVisibleListEntries(integerStep!).length).toBeLessThanOrEqual(10);
   });
 
-  it("testOperatorValueModeStepsActivateOwnSymbolTab", () => {
+  it("testOperatorValueModeStepsActivateOperatorTypeTab", () => {
     const result = steps(makeAst.operatorNode());
     const operatorStep = result[0]!;
     const entries = getVisibleListEntries(operatorStep);
     const active = entries.filter((e) => e.active);
     expect(active).toHaveLength(1);
-    expect(active[0]!.tabKind).toBe("operator");
-    expect(active[0]!.symbol).toBe(operatorStep.symbol);
+    expect(active[0]!.tabKind).toBe("type");
+    expect(active[0]!.symbol).toBe("Operator");
+  });
+
+  it("testOperatorValueKeepsNaturalTabOrderWhenOwnTabMatchesSearch", () => {
+    const result = steps(CodeLineToAST("operatorApply3"));
+    const operatorStep = result[0]!;
+    const entries = getVisibleListEntries(operatorStep);
+    expect(entries[0]!.symbol).toBe("Operator");
+    const active = entries.filter((e) => e.active);
+    expect(active).toHaveLength(1);
+    expect(active[0]!.symbol).toBe("Operator");
+    expect(active[0]!.tabKind).toBe("type");
+  });
+
+  it("testOperatorValueInApplyProgramActivatesOperatorTypeTab", () => {
+    const result = steps(CodeLineToAST("apply add 2"));
+    const addStep = result.find(
+      (s) => s.sourceType === "Operator" && s.detail === "ARITHMETIC_ADDITION"
+    )!;
+    const entries = getVisibleListEntries(addStep);
+    expect(entries.some((e) => e.symbol === "Operator" && e.active)).toBe(true);
+    expect(entries.some((e) => e.symbol === addStep.symbol && e.active)).toBe(
+      false
+    );
   });
 
   it("testPatternModeStepsFallBackToOperatorTypeTab", () => {
     const result = steps(makeAst.operatorNode(), 0, "pattern");
+    const patternStep = result[0]!;
+    const entries = getVisibleListEntries(patternStep);
+    const active = entries.filter((e) => e.active);
+    expect(active).toHaveLength(1);
+    expect(active[0]!.symbol).toBe("Operator");
+    expect(active[0]!.tabKind).toBe("type");
+  });
+
+  it("testPatternModeOperatorWhoseNameContainsOperatorActivatesTypeTabNotOwnTab", () => {
+    const result = steps(CodeLineToAST("operatorApply3"), 0, "pattern");
     const patternStep = result[0]!;
     const entries = getVisibleListEntries(patternStep);
     const active = entries.filter((e) => e.active);
