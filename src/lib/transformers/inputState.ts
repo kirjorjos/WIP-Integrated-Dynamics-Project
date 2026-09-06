@@ -896,11 +896,12 @@ const bestModeForSigLine = (
   };
   const depths: (number | null)[] = [base.depth, 0];
   const hides: boolean[] = [base.hideOperatorWrappers, true];
+  const resolvedVals: boolean[] = base.resolveAnys ? [true] : [false, true];
   for (const depth of depths) {
     for (const hide of hides) {
       for (const force of hide ? [false, true] : [false]) {
         for (const noParens of [false, true]) {
-          for (const resolved of [false, true]) {
+          for (const resolved of resolvedVals) {
             for (const parenFns of [false, true]) {
               push({
                 depth,

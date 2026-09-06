@@ -1008,9 +1008,13 @@ const getDisplayPanelText = (
     VisualStep,
     "output" | "node" | "tooltipOperatorKey" | "sourceType" | "detail"
   >,
-  allSteps: StepLikeWithNode[]
+  allSteps: StepLikeWithNode[],
+  harden = false
 ): string => {
-  // For string types without custom name, show the value
+  const flattenSignature = (sig: any): string[] => {
+    const parsed = new ParsedSignature(sig.getAst(), false);
+    return (harden ? parsed.rewrite() : parsed).toFlatSignature();
+  };
   if (
     step.sourceType === "String" &&
     step.detail &&
@@ -1075,7 +1079,7 @@ const getDisplayPanelText = (
           try {
             const op = ASTtoOperator(step.node) as any;
             const resolvedSig = op.getParsedSignature();
-            const flatSig = resolvedSig.toFlatSignature();
+            const flatSig = flattenSignature(resolvedSig);
             const indent = "\u00A0";
             const sigLines = flatSig
               .map((type: string, i: number) =>
@@ -1250,10 +1254,7 @@ const getDisplayPanelText = (
           return "";
         }
         const name = (op as any).getName().valueOf();
-        const flatSig = new ParsedSignature(
-          sig.getAst(),
-          false
-        ).toFlatSignature();
+        const flatSig = flattenSignature(sig);
         const indent = "\u00A0";
         const sigLines = flatSig
           .map((type: string, i: number) =>
@@ -1268,10 +1269,7 @@ const getDisplayPanelText = (
       }
 
       const name = op.getFullDisplayName();
-      const signature = new ParsedSignature(
-        op.getParsedSignature().getAst(),
-        false
-      ).toFlatSignature();
+      const signature = flattenSignature(op.getParsedSignature());
       const indent = "\u00A0";
       const sigLines = signature
         .map((type: string, i: number) =>
@@ -2453,6 +2451,7 @@ const getReaderViewValues = (
       :show-step-titles="props.showStepTitles"
       :force-show-output-card="props.forceShowOutputCard"
       :display-panel-text="getDisplayPanelText(step, steps)"
+      :display-panel-hardened-text="getDisplayPanelText(step, steps, true)"
       :display-panel-color="getDisplayPanelColor(step)"
       :display-panel-align="getDisplayPanelAlign(step)"
       :display-panel-error="getStepDisplayError(step)"

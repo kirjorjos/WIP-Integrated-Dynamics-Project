@@ -14,6 +14,10 @@ import {
 } from "lib";
 import { ParsedSignature } from "lib/HelperClasses/ParsedSignature";
 import { globalMap } from "lib/HelperClasses/TypeMap";
+import {
+  isRhsFullHardeningEnabled,
+  setVisualPanelHardeningMode,
+} from "pages-lib/visualTransformerHardeningKnob";
 import FoldableExpandedOutput from "../components/FoldableExpandedOutput.vue";
 import LogicProgrammerVisualOutput from "../components/LogicProgrammerVisualOutput.vue";
 import { detectInputFormat } from "lib/transformers/detectFormat";
@@ -74,7 +78,10 @@ const formatters: Record<
   expanded: {
     label: "Expanded",
     toAST: (value) => ExpandedToAST(value, initialVariableId.value),
-    fromAST: (ast) => ASTToExpanded(ast),
+    fromAST: (ast) =>
+      isRhsFullHardeningEnabled()
+        ? ASTToExpandedWithSignatureOptions(ast, "Condensed", RHS_FULL_SIG_OPTS)
+        : ASTToExpanded(ast),
   },
   codeline: {
     label: "Code Line",
@@ -188,6 +195,22 @@ const updateUrlState = (
 
 const SIGNATURE_ARROW_VALUES: ExpandedSignatureOptions["arrow"][] = ["->", "→"];
 
+const RHS_FULL_SIG_OPTS: ExpandedSignatureOptions = {
+  depth: null,
+  labels: false,
+  arrow: SIGNATURE_ARROW_VALUES[1]!,
+  hideOperatorWrappers: false,
+  resolveAnys: true,
+};
+
+const withRhsHardening = <T extends ExpandedSignatureOptions | null>(
+  opts: T
+): T => {
+  if (!isRhsFullHardeningEnabled()) return opts;
+  if (opts === null) return RHS_FULL_SIG_OPTS as T;
+  return { ...opts, resolveAnys: true } as T;
+};
+
 const signatureCandidateOpts = (): (ExpandedSignatureOptions | null)[] => {
   const depths: ExpandedSignatureOptions["depth"][] = [null, 0, 1, 2, 3];
   const opts: (ExpandedSignatureOptions | null)[] = [null]; // baseline: full canonical
@@ -217,23 +240,24 @@ const pickExpandedSignatureRender = (
   let bestCanonical = ASTToExpandedWithSignatureOptions(
     strippedAst,
     "Condensed",
-    null,
+    withRhsHardening(null),
     true
   );
   let bestSigOpts: ExpandedSignatureOptions | undefined;
   let bestLen = Infinity;
 
   for (const sigOpts of signatureCandidates) {
+    const hardenedOpts = withRhsHardening(sigOpts);
     const canonicalInput = ASTToExpandedWithSignatureOptions(
       strippedAst,
       "Condensed",
-      sigOpts,
+      hardenedOpts,
       true
     );
     const result = computeExpandedOverlay(
       rawInput,
       canonicalInput,
-      sigOpts ?? undefined
+      hardenedOpts ?? undefined
     );
     if (result.mode !== 0) continue;
     const len = compressWithInputState(ast, "expanded", {
@@ -244,16 +268,18 @@ const pickExpandedSignatureRender = (
     if (len < bestLen) {
       bestLen = len;
       bestCanonical = canonicalInput;
-      bestSigOpts = sigOpts ?? undefined;
+      bestSigOpts = hardenedOpts ?? undefined;
     }
   }
 
-  const winOpts = bestSigOpts ?? {
-    depth: null,
-    labels: false,
-    arrow: "→",
-    hideOperatorWrappers: false,
-  };
+  const winOpts =
+    bestSigOpts ??
+    withRhsHardening({
+      depth: null,
+      labels: false,
+      arrow: "→",
+      hideOperatorWrappers: false,
+    });
   const modes = discoverSignatureRestoreModes(rawInput, strippedAst, winOpts);
   let adoptedModes: typeof modes | undefined;
   if (modes.length > 0) {
@@ -503,6 +529,9 @@ onMounted(async () => {
   const output = url.searchParams.get("output");
   const varId = url.searchParams.get("varId");
 
+  const rhs = url.searchParams.get("rhs");
+  if (rhs === "hardened") setVisualPanelHardeningMode("full");
+
   if (varId !== null) {
     const parsed = Number.parseInt(varId, 10);
     initialVariableId.value =
@@ -530,10 +559,14 @@ onMounted(async () => {
     } else {
       const strippedAst = stripAutoCurryVarNames(ast);
       if (inputState.format === "expanded") {
+        const decodedSigOpts =
+          isRhsFullHardeningEnabled() && inputState.overlay.sig
+            ? { ...inputState.overlay.sig, resolveAnys: true }
+            : (inputState.overlay.sig ?? null);
         const canonicalBase = ASTToExpandedWithSignatureOptions(
           strippedAst,
           "Condensed",
-          inputState.overlay.sig ?? null,
+          decodedSigOpts,
           true
         );
         const overlay = resolveExpandedOverlayNames(
@@ -541,12 +574,21 @@ onMounted(async () => {
           canonicalBase
         );
         const modesMap = overlay.modes
-          ? new Map(overlay.modes.map((m) => [m.name, m.opts]))
+          ? new Map(
+              overlay.modes.map((m) => [
+                m.name,
+                isRhsFullHardeningEnabled()
+                  ? { ...m.opts, resolveAnys: true }
+                  : m.opts,
+              ])
+            )
           : undefined;
         const canonicalInput = ASTToExpandedWithSignatureOptions(
           strippedAst,
           "Condensed",
-          overlay.sig ?? null,
+          overlay.sig && isRhsFullHardeningEnabled()
+            ? { ...overlay.sig, resolveAnys: true }
+            : (overlay.sig ?? null),
           true,
           modesMap
         );

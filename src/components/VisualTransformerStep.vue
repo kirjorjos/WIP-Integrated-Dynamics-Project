@@ -20,6 +20,8 @@ const props = withDefaults(
     forceShowOutputCard?: boolean;
     /** Override display panel text (bypasses shared getDisplayPanelText) */
     displayPanelText?: string;
+    /** Override the RHS display panel text (full-hardened signature variant) */
+    displayPanelHardenedText?: string;
     /** Override display panel color (bypasses shared getDisplayPanelColor) */
     displayPanelColor?: string;
     /** Override display panel alignment (bypasses shared getDisplayPanelAlignment) */
@@ -32,6 +34,12 @@ const props = withDefaults(
 
 const panelText = computed(
   () => props.displayPanelText ?? getDisplayPanelText(props.step)
+);
+
+const panelHardenedText = computed(
+  () =>
+    props.displayPanelHardenedText ??
+    getDisplayPanelText(props.step, { harden: true })
 );
 
 const panelColor = computed(
@@ -83,7 +91,7 @@ const panelError = computed(
         :type-error="panelError"
       />
       <DisplayPanelView
-        :text="panelText"
+        :text="panelHardenedText"
         :text-color="panelColor"
         :align="panelAlign"
         :type-name="step.sourceType"

@@ -107,6 +107,34 @@ describe("getDisplayPanelText", () => {
     expect(curryText).toContain("NBT");
     expect(curryText).not.toContain("::\nAny");
   });
+
+  it("testHardensKnownAnysInRhsPanelText", () => {
+    const ast = ExpandedToAST(
+      `isLiteral = operatorPipe(apply(apply(operatorFlip, nbtGetString), "t"), apply(anyEquals, "l"))`
+    );
+    const result = steps(ast);
+    const curryStep = result.find((s) =>
+      getDisplayPanelText(s).includes("anyEquals")
+    )!;
+    const lhsText = getDisplayPanelText(curryStep);
+    const rhsText = getDisplayPanelText(curryStep, { harden: true });
+    expect(lhsText).toBe(
+      "Applied anyEquals [String] ::\nAny\n\u00A0-> Boolean"
+    );
+    expect(rhsText).toBe(
+      "Applied anyEquals [String] ::\nString\n\u00A0-> Boolean"
+    );
+  });
+
+  it("testLeavesFullyConcreteSignaturesUnchangedWhenHardened", () => {
+    const text = getDisplayPanelText(
+      { output: "x", node: makeAst.operatorNode() },
+      { harden: true }
+    );
+    expect(text).toContain("::");
+    expect(text).toContain("Number");
+    expect(text).toMatch(/\->/);
+  });
 });
 
 describe("isTypeAssignable", () => {
