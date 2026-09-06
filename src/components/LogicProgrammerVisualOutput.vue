@@ -2381,9 +2381,10 @@ const getVisibleListEntries = (step: VisualStep): VisibleListEntry[] => {
 
   const filtered = [...valueTypeEntries, ...operatorEntries]
     .sort((a, b) => {
-      // Put the matching operator entry first so .slice(0,10) includes it
-      if (a.symbol === step.symbol) return -1;
-      if (b.symbol === step.symbol) return 1;
+      if (step.sourceType !== "Operator") {
+        if (a.symbol === step.symbol) return -1;
+        if (b.symbol === step.symbol) return 1;
+      }
       return 0;
     })
     .slice(0, 10)
@@ -2394,12 +2395,13 @@ const getVisibleListEntries = (step: VisualStep): VisibleListEntry[] => {
       registryKey: entry.registryKey,
       active:
         entry.tabKind === "type"
-          ? !step.forceOperatorTabActive &&
-            entry.symbol ===
-              (step.sourceType === "Operator"
-                ? "Operator"
-                : getValueTypeSearchLabel(step.sourceType))
+          ? entry.symbol ===
+            (step.sourceType === "Operator"
+              ? "Operator"
+              : getValueTypeSearchLabel(step.sourceType))
           : entry.tabKind === "operator" &&
+            !step.forceOperatorTabActive &&
+            step.sourceType !== "Operator" &&
             !!step.detail &&
             entry.registryKey === step.detail,
     }));
