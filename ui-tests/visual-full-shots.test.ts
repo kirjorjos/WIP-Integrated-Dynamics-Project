@@ -25,6 +25,10 @@ const FIXTURES = [
   { name: "stringHello", input: '"hello"' },
   { name: "booleanTrue", input: "true" },
   {
+    name: "operatorApply3",
+    input: "operatorApply3",
+  },
+  {
     name: "pipeOverApplyBasedCurry",
     input:
       'isLiteral = operatorPipe(apply(apply(operatorFlip, nbtGetString), "t"), apply(anyEquals, "l"))',
@@ -48,6 +52,7 @@ const EXPECTED_STEPS: Record<(typeof FIXTURES)[number]["name"], number> = {
   listOneTwoThree: 4,
   stringHello: 1,
   booleanTrue: 1,
+  operatorApply3: 1,
   pipeOverApplyBasedCurry: 8,
 };
 
