@@ -256,7 +256,6 @@ test.describe("transformersPageVisualOutputDom", () => {
     );
     await expect(page.locator(".logic-programmer-shot")).toHaveCount(2);
     await expect(page.locator(".display-panel-error-overlay")).toHaveCount(0);
-    // @Variable("my var") resolves to the card id of the "my var" definition (0)
     await expect(
       page
         .locator(".logic-programmer-shot")
@@ -270,6 +269,41 @@ test.describe("transformersPageVisualOutputDom", () => {
         `at-variable-wrapper-step-${index}.png`
       );
     }
+  });
+
+  test("testUrlLoadEditRetransformCommitsNewInput", async ({ page }) => {
+    await openVisual(page, (await CODE).clean);
+    await expect(page.locator(".logic-programmer-shot")).toHaveCount(3);
+
+    const inputBox = page.locator('textarea[aria-label="Transformer input"]');
+    await inputBox.fill("apply add 1 2");
+    await page.getByRole("button", { name: "Transform", exact: true }).click();
+
+    await expect(page.locator(".logic-programmer-shot")).toHaveCount(3);
+    await expect(
+      page.locator(".display-panel .fit-text-inner").filter({ hasText: "3" })
+    ).toHaveCount(2);
+    await expect(page.locator(".logic-programmer-sequence")).toHaveScreenshot(
+      "url-load-edit-retransform.png"
+    );
+  });
+
+  test("testEditInputWithoutTransformKeepsVisualOutputFrozen", async ({
+    page,
+  }) => {
+    await openVisual(page, (await CODE).clean);
+    const shots = page.locator(".logic-programmer-shot");
+    await expect(shots).toHaveCount(3);
+
+    await page
+      .locator('textarea[aria-label="Transformer input"]')
+      .fill("apply add 1 2");
+
+    await expect(shots).toHaveCount(3);
+    await expect(page.locator(".logic-programmer-sequence")).toBeVisible();
+    await expect(
+      page.locator(".display-panel .fit-text-inner").filter({ hasText: "3" })
+    ).toHaveCount(0);
   });
 
   test("testFitTextRendersAtIntegerPixelSizes", async ({ page }) => {
