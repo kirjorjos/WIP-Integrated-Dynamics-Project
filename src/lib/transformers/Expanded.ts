@@ -752,7 +752,10 @@ export const ASTToExpandedWithSignatureOptions = (
     }
     const overrideOpts = v.varName ? sigOverrides?.get(v.varName) : undefined;
     const effOpts = overrideOpts ?? sigOpts;
-    const sig = overrideOpts?.resolveAnys
+    const effResolveAnys = Boolean(
+      overrideOpts?.resolveAnys ?? effOpts?.resolveAnys
+    );
+    const sig = effResolveAnys
       ? computeSignature(v, undefined, true)
       : computeSignature(v, signatureCache);
     const sigStr = effOpts

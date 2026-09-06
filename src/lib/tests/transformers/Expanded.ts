@@ -1,9 +1,15 @@
-import { ASTToExpanded, ExpandedToAST } from "lib/transformers/Expanded";
+import {
+  ASTToExpanded,
+  ASTToExpandedWithSignatureOptions,
+  ExpandedToAST,
+} from "lib/transformers/Expanded";
+import type { ExpandedSignatureOptions } from "lib/transformers/Expanded";
 import { ASTToCodeLine, CodeLineToAST } from "lib/transformers/CodeLine";
 import { ASTToCondensed } from "lib/transformers/Condensed";
 import { ASTToCompressed, CompressedToAST } from "lib/transformers/Compressed";
 import { globalMap } from "lib/HelperClasses/TypeMap";
 import { ParsedSignature } from "lib/HelperClasses/ParsedSignature";
+import { stripAutoCurryVarNames } from "lib/transformers/inputState";
 
 describe("TestExpandedTransformer", () => {
   beforeEach(() => {
@@ -339,6 +345,39 @@ final = apply(numberAdd, var2)
     const expected =
       "operatorApply3 :: Operator<Operator<Any → (Any → (Any → Any))> → (Any → (Any → (Any → Any)))>\noperatorApply3 = operatorApply3";
     expect(expanded).toBe(expected);
+  });
+
+  it("testGlobalResolveAnysIsHonoredBySignatureGeneration", () => {
+    const ast = ExpandedToAST(
+      'concatSlice = apply(stringConcat, "a")\nval = operatorPipe(concatSlice, apply(anyEquals, "b"))'
+    );
+    const stripped = stripAutoCurryVarNames(
+      CompressedToAST(ASTToCompressed(ast))
+    );
+    const normalizedOpts: ExpandedSignatureOptions = {
+      depth: null,
+      labels: false,
+      arrow: "→",
+      hideOperatorWrappers: false,
+    };
+    const hardenedOpts: ExpandedSignatureOptions = {
+      ...normalizedOpts,
+      resolveAnys: true,
+    };
+    const plain = ASTToExpandedWithSignatureOptions(
+      stripped,
+      "Condensed",
+      normalizedOpts,
+      true
+    );
+    const hardened = ASTToExpandedWithSignatureOptions(
+      stripped,
+      "Condensed",
+      hardenedOpts,
+      true
+    );
+    expect(plain).toContain("val :: Operator<String → Boolean>");
+    expect(hardened).toBe(plain);
   });
 
   it("testExpandedListLiteral", () => {

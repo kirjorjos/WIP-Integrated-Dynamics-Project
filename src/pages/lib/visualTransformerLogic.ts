@@ -543,7 +543,8 @@ export const isDirectListValue = (node: TypeAST.AST): boolean => {
 };
 
 export const getDisplayPanelText = (
-  step: Pick<VisualStep, "output" | "node">
+  step: Pick<VisualStep, "output" | "node">,
+  options?: { harden?: boolean }
 ): string => {
   if (step.node) {
     if (step.node.type === "Reader") {
@@ -561,19 +562,15 @@ export const getDisplayPanelText = (
     }
     try {
       const op = ASTtoOperator(step.node) as any;
-      // CurriedOperator (and other Operator subclasses that aren't
-      // BaseOperators) don't implement getFullDisplayName — fall back to
-      // getName() so partially-applied curries still show name + signature
-      // instead of silently falling through to the raw step output.
       const name =
         typeof op.getFullDisplayName === "function"
           ? op.getFullDisplayName()
           : typeof op.getName === "function"
             ? String(op.getName().valueOf())
             : step.output;
-      const signature = new ParsedSignature(
-        op.getParsedSignature().getAst(),
-        false
+      const sig = new ParsedSignature(op.getParsedSignature().getAst(), false);
+      const signature = (
+        options?.harden ? sig.rewrite() : sig
       ).toFlatSignature();
       const indent = "\u00A0";
       const sigLines = signature
@@ -581,11 +578,6 @@ export const getDisplayPanelText = (
         .join("\n");
       return `${name} ::\n${sigLines}`;
     } catch (e) {
-      // Steps whose AST contains Flip/Pipe/Pipe2 nodes can legitimately
-      // fail to construct when the serializer wraps an operator that can't
-      // be transformed (e.g. flipping an operator with fewer than two
-      // inputs). Those are user input errors, not internal bugs — degrade
-      // gracefully instead of recording them.
       if (step.node && !astContainsSerializerNode(step.node)) {
         runtimeErrors.set(step.node, {
           message: e instanceof Error ? e.message : String(e),

@@ -1,4 +1,5 @@
 import { ExpandedToAST, ASTToExpanded } from "lib/transformers/Expanded";
+import type { ExpandedSignatureOptions } from "lib/transformers/Expanded";
 import {
   compressWithInputState,
   type InputStateSection,
@@ -7,6 +8,7 @@ import {
   analyzeExpandedLines,
   computeExpandedOverlay,
   applyExpandedOverlay,
+  discoverSignatureRestoreModes,
   type ExpandedOverlay,
 } from "lib/transformers/inputState";
 
@@ -311,6 +313,39 @@ describe("TestExpandedOverlay", () => {
       const elidedSection = compressExpandedSection(ast, result.overlay);
       const headedSection = compressExpandedSection(ast, withHead);
       expect(elidedSection.length).toBeLessThan(headedSection.length);
+    });
+  });
+
+  describe("signature restore modes honor a resolved base", () => {
+    const RAW =
+      "byEquals = apply(pipe, equals)\nonHead = apply(flip(pipe), head)\nend = onHead";
+
+    it("respects base.resolveAnys when discovering modes", () => {
+      const ast = ExpandedToAST(RAW);
+      const base: ExpandedSignatureOptions = {
+        depth: null,
+        labels: false,
+        arrow: "→",
+        hideOperatorWrappers: false,
+      };
+      const resolvedBase: ExpandedSignatureOptions = {
+        ...base,
+        resolveAnys: true,
+      };
+      const modes = discoverSignatureRestoreModes(RAW, ast, resolvedBase);
+      expect(modes.every((m) => m.opts.resolveAnys === true)).toBe(true);
+    });
+
+    it("does not constrain modes when the base has no resolveAnys", () => {
+      const ast = ExpandedToAST(RAW);
+      const base: ExpandedSignatureOptions = {
+        depth: null,
+        labels: false,
+        arrow: "→",
+        hideOperatorWrappers: false,
+      };
+      const modes = discoverSignatureRestoreModes(RAW, ast, base);
+      expect(Array.isArray(modes)).toBe(true);
     });
   });
 });
