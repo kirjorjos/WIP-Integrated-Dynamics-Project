@@ -51,6 +51,8 @@ type OutputFormatKey = Exclude<FormatKey, "compressed"> | "visual";
 const inputText = ref("");
 const outputText = ref("");
 const outputFormat = ref<OutputFormatKey>("condensed");
+const displayedOutputFormat = ref<OutputFormatKey>("condensed");
+const inputDirty = ref(false);
 const status = ref("");
 const outputError = ref("");
 const lineNumberOffset = ref(0);
@@ -143,16 +145,10 @@ const canTransform = computed(() => inputText.value.trim().length > 0);
 const canCopyOutput = computed(
   () =>
     !outputError.value &&
-    (outputFormat.value === "visual"
+    (displayedOutputFormat.value === "visual"
       ? currentAst.value !== null
       : outputText.value.trim().length > 0)
 );
-const canProcessTypes = computed(
-  () =>
-    !outputError.value &&
-    (outputText.value.trim().length > 0 || inputText.value.trim().length > 0)
-);
-
 const syncLineNumberOffsetFromTextarea = (): void => {
   lineNumberOffset.value = inputEditor.value?.scrollTop ?? 0;
 };
@@ -414,15 +410,17 @@ const updateOutputFromAst = (
 
 watch(inputText, async () => {
   if (restoringState) return;
-  currentAst.value = null;
+  inputDirty.value = true;
   await nextTick();
   syncLineNumberOffsetFromTextarea();
 });
 
 watch(outputFormat, () => {
+  if (inputDirty.value || !currentAst.value || outputError.value) return;
+  if (!updateOutputFromAst(currentAst.value, outputFormat.value)) return;
+  inputDirty.value = false;
+  displayedOutputFormat.value = outputFormat.value;
   updateUrlState(buildUrlCode(), outputFormat.value, initialVariableId.value);
-  if (!currentAst.value || outputError.value) return;
-  updateOutputFromAst(currentAst.value, outputFormat.value);
 });
 
 watch(initialVariableId, (value) => {
@@ -434,20 +432,26 @@ watch(initialVariableId, (value) => {
     return;
   }
 
-  if (currentAst.value && inputText.value.trim()) {
+  if (!inputDirty.value && currentAst.value && inputText.value.trim()) {
     transform();
     return;
   }
-  updateUrlState(buildUrlCode(), outputFormat.value, normalized);
+  if (!inputDirty.value) {
+    updateUrlState(buildUrlCode(), outputFormat.value, normalized);
+  }
 });
 
 const transform = (skipUrlUpdate: boolean = false): void => {
   try {
+    globalMap.clear();
+    ParsedSignature.resetTypeIDCounter();
     const rawInput = inputText.value; // untrimmed (no-trim rule)
     const sourceFormat = detectInputFormat(rawInput);
     const ast = formatters[sourceFormat].toAST(rawInput);
     currentAst.value = ast;
     if (!updateOutputFromAst(ast, outputFormat.value)) return;
+    inputDirty.value = false;
+    displayedOutputFormat.value = outputFormat.value;
     status.value = `Detected ${formatters[sourceFormat].label}. Output as ${outputFormatters[outputFormat.value].label}.`;
     if (skipUrlUpdate) return;
     const inputState = buildInputStateSection(
@@ -470,50 +474,13 @@ const transform = (skipUrlUpdate: boolean = false): void => {
   }
 };
 
-const getCurrentAst = (): TypeAST.AST => {
-  if (currentAst.value) return currentAst.value;
-
-  const rawInput = inputText.value; // untrimmed
-  const sourceFormat = detectInputFormat(rawInput);
-  return formatters[sourceFormat].toAST(rawInput);
-};
-
-const processTypes = (): void => {
-  try {
-    const ast = getCurrentAst();
-    globalMap.clear();
-    ParsedSignature.resetTypeIDCounter();
-    currentAst.value = ast;
-    outputFormat.value = "expanded";
-    if (!updateOutputFromAst(ast, "expanded")) return;
-    status.value = "Processed types and regenerated expanded output.";
-    const rawInput = inputText.value; // untrimmed
-    const inputState = rawInput.trim()
-      ? buildInputStateSection(
-          rawInput,
-          detectInputFormat(rawInput),
-          ast,
-          "expanded"
-        )
-      : null;
-    const code = inputState
-      ? compressWithInputState(ast, "expanded", inputState)
-      : ASTToCompressed(ast);
-    updateUrlState(code, "expanded", initialVariableId.value);
-  } catch (error) {
-    outputText.value = "";
-    outputError.value = error instanceof Error ? error.message : String(error);
-    status.value = "";
-  }
-};
-
 const copyOutput = async (): Promise<void> => {
   if (!canCopyOutput.value) return;
 
   const textToCopy =
-    outputFormat.value === "expanded"
+    displayedOutputFormat.value === "expanded"
       ? (expandedOutputViewer.value?.getCopyText() ?? outputText.value)
-      : outputFormat.value === "visual" && currentAst.value
+      : displayedOutputFormat.value === "visual" && currentAst.value
         ? currentAst.value.type === "NetworkCards"
           ? ASTToExpanded(currentAst.value)
           : ASTToCondensed(currentAst.value, true, initialVariableId.value)
@@ -616,6 +583,8 @@ onMounted(async () => {
   }
 
   if (updateOutputFromAst(ast, outputFormat.value)) {
+    inputDirty.value = false;
+    displayedOutputFormat.value = outputFormat.value;
     status.value = "Loaded output from URL.";
   }
 });
@@ -685,28 +654,21 @@ onMounted(async () => {
         <button :disabled="!canTransform" type="button" @click="transform()">
           Transform
         </button>
-        <button
-          :disabled="!canProcessTypes"
-          type="button"
-          @click="processTypes"
-        >
-          Process Types
-        </button>
         <button :disabled="!canCopyOutput" type="button" @click="copyOutput">
           Copy output
         </button>
       </div>
 
       <label class="field">
-        <span>{{ outputFormatters[outputFormat].label }}</span>
+        <span>{{ outputFormatters[displayedOutputFormat].label }}</span>
         <div v-if="outputError" class="output-error" v-text="outputError" />
         <FoldableExpandedOutput
-          v-else-if="outputFormat === 'expanded'"
+          v-else-if="displayedOutputFormat === 'expanded'"
           ref="expandedOutputViewer"
           :text="outputText"
         />
         <LogicProgrammerVisualOutput
-          v-else-if="outputFormat === 'visual' && currentAst"
+          v-else-if="displayedOutputFormat === 'visual' && currentAst"
           :ast="currentAst"
           :start-variable-id="initialVariableId"
           :show-step-numbers="true"
@@ -719,7 +681,7 @@ onMounted(async () => {
           :value="outputText"
           class="editor"
           spellcheck="false"
-          :aria-label="outputFormatters[outputFormat].label"
+          :aria-label="outputFormatters[displayedOutputFormat].label"
           readonly
         />
       </label>
