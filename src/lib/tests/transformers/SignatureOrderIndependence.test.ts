@@ -96,8 +96,8 @@ const UNRELATED = [
   "notFull = pipe2(modFifteenPlusOne, getCurrentReaderValue, equals)",
 ];
 
-describe("order independence of computed signatures", () => {
-  it("defs render identically when unrelated defs precede them", () => {
+describe("OrderIndependenceOfComputedSignatures", () => {
+  it("defsRenderIdenticallyWhenUnrelatedDefsPrecedeThem", () => {
     const solo = canon(DEFS_A);
     const polluted = canon([...UNRELATED, ...DEFS_A]);
 

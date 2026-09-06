@@ -27,7 +27,7 @@ import {
 } from "lib/transformers/helpers";
 import { iError } from "lib/IntegratedDynamicsClasses/typeWrappers/iError";
 
-describe("Operator Transformer Tests", () => {
+describe("OperatorTransformerTests", () => {
   let i10: Integer;
   let sHello: iString;
   let bTrue: iBoolean;
@@ -204,7 +204,7 @@ describe("Operator Transformer Tests", () => {
    * ----------------------------------- OperatortoAST -----------------------------------
    */
   describe("TestOperatortoAST", () => {
-    it("should transform IntegratedValues back to AST", () => {
+    it("shouldTransformIntegratedValuesBackToAST", () => {
       expect(OperatortoAST(i10)).toEqual(i10AST);
       expect(OperatortoAST(sHello)).toEqual(sHelloAST);
       expect(OperatortoAST(bTrue)).toEqual(bTrueAST);
@@ -225,7 +225,7 @@ describe("Operator Transformer Tests", () => {
       expect(roundTripAST).toEqual(curryAST);
     });
 
-    it("should handle NBT tags via toJSON", () => {
+    it("shouldHandleNBTTagsViaToJSON", () => {
       const mockTag = {
         toJSON: () => ({ some: "data" }),
         constructor: { name: "ByteTag" },
@@ -245,7 +245,7 @@ describe("Operator Transformer Tests", () => {
   /**
    * ------------------------- VariableValueById resolution -------------------------
    */
-  describe("VariableValueByIdResolution Tests", () => {
+  describe("VariableValueByIdResolutionTests", () => {
     const twoCardSteps = (): { variableId: number; node: TypeAST.AST }[] => [
       { variableId: 0, node: { type: "Integer", value: "319" } },
       { variableId: 1, node: { type: "Integer", value: "236" } },

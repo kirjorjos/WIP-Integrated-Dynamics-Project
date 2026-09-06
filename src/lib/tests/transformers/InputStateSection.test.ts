@@ -48,20 +48,20 @@ const restore = (
       : applyCondensedOverlay(canonical, decoded.overlay);
 
 describe("TestInputStateSection", () => {
-  describe("sectionless codes decode as today", () => {
-    it("CompressedToAST still works on a plain AST", () => {
+  describe("SectionlessCodesDecodeAsToday", () => {
+    it("compressedToASTStillWorksOnAPlainAST", () => {
       const ast: TypeAST.AST = { type: "Integer", value: "10", varName: "ten" };
       const code = ASTToCompressed(ast);
       expect(CompressedToAST(code)).toEqual(ast);
     });
 
-    it("decodeInputStateFromCompressed returns null for a sectionless code", () => {
+    it("decodeInputStateFromCompressedReturnsNullForASectionlessCode", () => {
       const code = ASTToCompressed({ type: "String", value: "hi" });
       expect(decodeInputStateFromCompressed(code, "condensed")).toBeNull();
     });
   });
 
-  describe("existing negative tests still throw (decode errors, not trailing bits)", () => {
+  describe("ExistingNegativeTestsStillThrowDecodeErrorsNotTrailingBits", () => {
     it("testRejectUnknownOperatorID", () => {
       expect(() => CompressedToAST("f-A")).toThrow();
     });
@@ -71,7 +71,7 @@ describe("TestInputStateSection", () => {
     });
   });
 
-  describe("encode + decode the condensed overlay section", () => {
+  describe("EncodePlusDecodeTheCondensedOverlaySection", () => {
     const cases: Array<{ raw: string }> = [
       { raw: "add(1, 2)" },
       { raw: "add('a', 'b')" },
@@ -79,7 +79,7 @@ describe("TestInputStateSection", () => {
       { raw: "  add(1, 2)  \t" },
     ];
 
-    it.each(cases)("round-trips %j (output format json)", ({ raw }) => {
+    it.each(cases)("roundTrips%jOutputFormatJson", ({ raw }) => {
       const { section, ast, canonical } = buildSection(raw);
       const code = compressWithInputState(ast, "json", section);
 
@@ -95,7 +95,7 @@ describe("TestInputStateSection", () => {
     });
 
     it.each(["add 1 2", 'stringConcat "a" "b"', "  add 1 2  \t", "add  1 2"])(
-      "codeline section round-trips %j (output format json)",
+      "codelineSectionRoundTrips%jOutputFormatJson",
       (raw) => {
         const ast = CodeLineToAST(raw);
         const canonical = ASTToCodeLine(ast);
@@ -126,7 +126,7 @@ describe("TestInputStateSection", () => {
       "\n\nx = 5\n\n",
       'Variable("my var") = 5\nfinal = Variable("my var")',
       'result = stringConcat("a very long first string value", "a very long second string value") -- computed',
-    ])("expanded section round-trips %j (output format json)", (raw) => {
+    ])("expandedSectionRoundTrips%jOutputFormatJson", (raw) => {
       const ast = ExpandedToAST(raw);
       const canonical = ASTToExpanded(ast);
       const overlay = computeExpandedOverlay(raw, canonical);
@@ -147,7 +147,7 @@ describe("TestInputStateSection", () => {
       expect(applyExpandedOverlay(canonical, decoded.overlay)).toBe(raw);
     });
 
-    it("expanded tail-mode-0 (sparse RHS) round-trips through the bitstream", () => {
+    it("expandedTailMode0SparseRHSRoundTripsThroughTheBitstream", () => {
       const raw =
         'result = stringConcat("a very long first string value", "a very long second string value") -- computed';
       const ast = ExpandedToAST(raw);
@@ -185,7 +185,7 @@ describe("TestInputStateSection", () => {
       expect(applyExpandedOverlay(canonical, decoded.overlay)).toBe(raw);
     });
 
-    it("json section round-trips an operator payload with whitespace + spellings", () => {
+    it("jsonSectionRoundTripsAnOperatorPayloadWithWhitespacePlusSpellings", () => {
       const baseAst: TypeAST.Curried = {
         type: "Curry",
         base: { type: "Operator", opName: "ARITHMETIC_ADDITION" },
@@ -214,7 +214,7 @@ describe("TestInputStateSection", () => {
       expect(restored).toBe(raw);
     });
 
-    it("stores a section when formats match but canonical != raw (presence rule)", () => {
+    it("storesASectionWhenFormatsMatchButCanonicalNotEqualRawPresenceRule", () => {
       const raw = "add(1, 2)";
       const { section, ast, canonical } = buildSection(raw);
       const code = compressWithInputState(ast, "condensed", section);
@@ -226,7 +226,7 @@ describe("TestInputStateSection", () => {
       expect(restore(canonical, decoded)).toBe(raw);
     });
 
-    it("canonical string-arg curry round-trips via a sparse overlay", () => {
+    it("canonicalStringArgCurryRoundTripsViaASparseOverlay", () => {
       const raw = 'stringConcat("a", "b")';
       const ast = CondensedToAST(raw);
       const canonical = ASTToCondensed(
@@ -256,7 +256,7 @@ describe("TestInputStateSection", () => {
       expect(restored).toBe(raw);
     });
 
-    it("raw-text fallback decodes verbatim (mode 1 payload)", () => {
+    it("rawTextFallbackDecodesVerbatimMode1Payload", () => {
       const raw = 'stringConcat("a", "b")';
       const ast: TypeAST.AST = CondensedToAST("add(1, 2)");
       const section: InputStateSection = {
@@ -273,7 +273,7 @@ describe("TestInputStateSection", () => {
       });
     });
 
-    it("clustered string codec round-trips every class tier + escape chars", () => {
+    it("clusteredStringCodecRoundTripsEveryClassTierPlusEscapeChars", () => {
       const raws = [
         "lowercaseName_2_With|pipe?and~tilde#hash",
         "UPPER lower 123 ()[]{},.:;-_<>= \t\n",
@@ -296,7 +296,7 @@ describe("TestInputStateSection", () => {
       }
     });
 
-    it("clustered string codec falls back to legacy encoding for non-ascii", () => {
+    it("clusteredStringCodecFallsBackToLegacyEncodingForNonAscii", () => {
       const raws = ["héllo wörld", "名前に日本語", "emoji 🎉 in string"];
       for (const raw of raws) {
         const ast: TypeAST.AST = CondensedToAST("add(1, 2)");
@@ -316,8 +316,8 @@ describe("TestInputStateSection", () => {
     });
   });
 
-  describe("format-stored bit", () => {
-    it("encodes the format when it differs from output, elides it otherwise", () => {
+  describe("FormatStoredBit", () => {
+    it("encodesTheFormatWhenItDiffersFromOutputElidesItOtherwise", () => {
       const ast: TypeAST.AST = { type: "Integer", value: "1" };
 
       const same = compressWithInputState(ast, "condensed", {

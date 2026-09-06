@@ -12,7 +12,7 @@ describe("TestFormatOuterWhitespaceTolerance", () => {
       ['   "hello" \t ', '"hello"'],
     ];
 
-    it.each(cases)("parses untrimmed %j like trimmed %j", (wrapped, clean) => {
+    it.each(cases)("parsesUntrimmed%jLikeTrimmed%j", (wrapped, clean) => {
       expect(CondensedToAST(wrapped)).toEqual(CondensedToAST(clean));
     });
   });
@@ -24,7 +24,7 @@ describe("TestFormatOuterWhitespaceTolerance", () => {
       ["\nx :: Integer = 5\nfinal = x\n", "x :: Integer = 5\nfinal = x"],
     ];
 
-    it.each(cases)("parses untrimmed %j like trimmed %j", (wrapped, clean) => {
+    it.each(cases)("parsesUntrimmed%jLikeTrimmed%j", (wrapped, clean) => {
       expect(ExpandedToAST(wrapped)).toEqual(ExpandedToAST(clean));
     });
   });
@@ -36,12 +36,12 @@ describe("TestFormatOuterWhitespaceTolerance", () => {
       ['  \n  stringConcat "a" "b"  \n  ', 'stringConcat "a" "b"'],
     ];
 
-    it.each(cases)("parses untrimmed %j like trimmed %j", (wrapped, clean) => {
+    it.each(cases)("parsesUntrimmed%jLikeTrimmed%j", (wrapped, clean) => {
       expect(CodeLineToAST(wrapped)).toEqual(CodeLineToAST(clean));
     });
   });
 
-  describe("JSONtoAST (via the page's JSON.parse path)", () => {
+  describe("JSONtoASTViaThePagesJSONParsePath", () => {
     const ast: TypeAST.Curried = {
       type: "Curry",
       base: { type: "Operator", opName: "ARITHMETIC_ADDITION" },
@@ -53,7 +53,7 @@ describe("TestFormatOuterWhitespaceTolerance", () => {
       [`  ${json}  `, json],
       [`\n\n\t${json}\n\n`, json],
     ] as Array<[string, string]>)(
-      "parses untrimmed %j like trimmed %j",
+      "parsesUntrimmed%jLikeTrimmed%j",
       (wrapped, clean) => {
         expect(JSON.parse(wrapped)).toEqual(JSON.parse(clean));
         expect(JSONtoAST(JSON.parse(wrapped) as jsonData)).toEqual(

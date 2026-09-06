@@ -37,8 +37,8 @@ const compressExpandedRaw = (
 };
 
 describe("TestExpandedOverlay", () => {
-  describe("analyzeExpandedLines", () => {
-    it("classifies comment / blank / signature / definition / bare", () => {
+  describe("AnalyzeExpandedLines", () => {
+    it("classifiesCommentBlankSignatureDefinitionBare", () => {
       const items = analyzeExpandedLines("\n-- hi\nx = 5\n\ns :: Type\nend");
       expect(items).toEqual([
         { kind: 3, text: "" },
@@ -51,7 +51,7 @@ describe("TestExpandedOverlay", () => {
     });
   });
 
-  describe("compute + apply round-trips", () => {
+  describe("ComputePlusApplyRoundTrips", () => {
     const cases = [
       "x = 5",
       "-- note\n\nx = 5",
@@ -66,7 +66,7 @@ describe("TestExpandedOverlay", () => {
       "inc = x => numberAdd x 1", // arrow-form
     ];
 
-    it.each(cases)("round-trips %j", (raw) => {
+    it.each(cases)("roundTrips%j", (raw) => {
       const ast = ExpandedToAST(raw);
       const canonical = ASTToExpanded(ast);
       const result = computeExpandedOverlay(raw, canonical);
@@ -78,8 +78,8 @@ describe("TestExpandedOverlay", () => {
     });
   });
 
-  describe("outer whitespace round-trips byte-for-byte", () => {
-    it("leading + trailing blank lines and spaces", () => {
+  describe("OuterWhitespaceRoundTripsByteForByte", () => {
+    it("leadingPlusTrailingBlankLinesAndSpaces", () => {
       const raw = "  \n\n\tx = 5  \n\n  ";
       const ast = ExpandedToAST(raw);
       const canonical = ASTToExpanded(ast);
@@ -92,11 +92,11 @@ describe("TestExpandedOverlay", () => {
     });
   });
 
-  describe("tail-mode 0 (sparse RHS diff)", () => {
+  describe("TailMode0SparseRHSDiff", () => {
     const LONG_STRING_RHS =
       'stringConcat("a very long first string value", "a very long second string value")';
 
-    it("stores a sparse RHS overlay when the raw RHS aligns with the canonical RHS", () => {
+    it("storesASparseRHSOverlayWhenTheRawRHSAlignsWithTheCanonicalRHS", () => {
       const raw = `result = ${LONG_STRING_RHS}`;
       const ast = ExpandedToAST(raw);
       const canonical = ASTToExpanded(ast);
@@ -123,7 +123,7 @@ describe("TestExpandedOverlay", () => {
       expect(applyExpandedOverlay(canonical, result.overlay)).toBe(raw);
     });
 
-    it("keeps the inline comment as the RHS suffix", () => {
+    it("keepsTheInlineCommentAsTheRHSSuffix", () => {
       const raw = `result = ${LONG_STRING_RHS} -- computed`;
       const ast = ExpandedToAST(raw);
       const canonical = ASTToExpanded(ast);
@@ -140,7 +140,7 @@ describe("TestExpandedOverlay", () => {
       expect(applyExpandedOverlay(canonical, result.overlay)).toBe(raw);
     });
 
-    it("spelling divergences land in the RHS overlay, not the verbatim tail", () => {
+    it("spellingDivergencesLandInTheRHSOverlayNotTheVerbatimTail", () => {
       const raw =
         "result = stringConcat(\"a very long first string value\", 'a very long second string value')";
       const ast = ExpandedToAST(raw);
@@ -164,7 +164,7 @@ describe("TestExpandedOverlay", () => {
       expect(applyExpandedOverlay(canonical, result.overlay)).toBe(raw);
     });
 
-    it("falls back to a verbatim tail when the RHS surface diverges (lambda params)", () => {
+    it("fallsBackToAVerbatimTailWhenTheRHSSurfaceDivergesLambdaParams", () => {
       const raw = "inc x = numberAdd x 1";
       const ast = ExpandedToAST(raw);
       const canonical = ASTToExpanded(ast);
@@ -187,7 +187,7 @@ describe("TestExpandedOverlay", () => {
       expect(restored).toBe(raw);
     });
 
-    it("raw fallback when the item stream is larger than the input", () => {
+    it("rawFallbackWhenTheItemStreamIsLargerThanTheInput", () => {
       const raw = "x :: Integer\nx = 5";
       const ast = ExpandedToAST(raw);
       const canonical = ASTToExpanded(ast);
@@ -196,7 +196,7 @@ describe("TestExpandedOverlay", () => {
       if (result.mode === 1) expect(result.rawText).toBe(raw);
     });
 
-    it("repeated same-AST definitions each get tail-mode 0 items", () => {
+    it("repeatedSameASTDefinitionsEachGetTailMode0Items", () => {
       const raw = `result = ${LONG_STRING_RHS}\nresult = ${LONG_STRING_RHS}`;
       const ast = ExpandedToAST(raw);
       const canonical = ASTToExpanded(ast);
@@ -210,7 +210,7 @@ describe("TestExpandedOverlay", () => {
       expect(applyExpandedOverlay(canonical, result.overlay)).toBe(raw);
     });
 
-    it("the overlay is strictly smaller than the raw input (the point of tail-mode 0)", () => {
+    it("theOverlayIsStrictlySmallerThanTheRawInputThePointOfTailMode0", () => {
       const raw = `result = ${LONG_STRING_RHS}`;
       const ast = ExpandedToAST(raw);
       const canonical = ASTToExpanded(ast);
@@ -223,11 +223,11 @@ describe("TestExpandedOverlay", () => {
     });
   });
 
-  describe("head-default elision (has-head=0)", () => {
+  describe("HeadDefaultElisionHasHead0", () => {
     const LONG_RHS =
       'stringConcat("a very long first string value", "a very long second string value")';
 
-    it("elides a default head to null (tail-mode 0 item)", () => {
+    it("elidesADefaultHeadToNullTailMode0Item", () => {
       const raw = `result = ${LONG_RHS} -- note`;
       const ast = ExpandedToAST(raw);
       const canonical = ASTToExpanded(ast);
@@ -237,7 +237,7 @@ describe("TestExpandedOverlay", () => {
       expect(item).toMatchObject({ kind: 0, name: "result", head: null });
     });
 
-    it("stores a non-default head verbatim", () => {
+    it("storesANonDefaultHeadVerbatim", () => {
       const raw = `Variable("result") = ${LONG_RHS}`;
       const ast = ExpandedToAST(raw);
       const canonical = ASTToExpanded(ast);
@@ -251,7 +251,7 @@ describe("TestExpandedOverlay", () => {
       });
     });
 
-    it("reconstructs the default head on apply (bare and Variable-wrapped names)", () => {
+    it("reconstructsTheDefaultHeadOnApplyBareAndVariableWrappedNames", () => {
       for (const [name, head] of [
         ["result", "result ="],
         ["my var", 'Variable("my var") ='],
@@ -272,7 +272,7 @@ describe("TestExpandedOverlay", () => {
       }
     });
 
-    it("apply reconstructs the default head for tail-mode-0 items", () => {
+    it("applyReconstructsTheDefaultHeadForTailMode0Items", () => {
       const canonical = `result = ${LONG_RHS}`;
       const overlay: ExpandedOverlay = {
         items: [
@@ -297,7 +297,7 @@ describe("TestExpandedOverlay", () => {
       );
     });
 
-    it("eliding the head shrinks the encoded section (size proof)", () => {
+    it("elidingTheHeadShrinksTheEncodedSectionSizeProof", () => {
       const raw = `result = ${LONG_RHS}`;
       const ast = ExpandedToAST(raw);
       const canonical = ASTToExpanded(ast);
@@ -316,11 +316,11 @@ describe("TestExpandedOverlay", () => {
     });
   });
 
-  describe("signature restore modes honor a resolved base", () => {
+  describe("SignatureRestoreModesHonorAResolvedBase", () => {
     const RAW =
       "byEquals = apply(pipe, equals)\nonHead = apply(flip(pipe), head)\nend = onHead";
 
-    it("respects base.resolveAnys when discovering modes", () => {
+    it("respectsBaseResolveAnysWhenDiscoveringModes", () => {
       const ast = ExpandedToAST(RAW);
       const base: ExpandedSignatureOptions = {
         depth: null,
@@ -336,7 +336,7 @@ describe("TestExpandedOverlay", () => {
       expect(modes.every((m) => m.opts.resolveAnys === true)).toBe(true);
     });
 
-    it("does not constrain modes when the base has no resolveAnys", () => {
+    it("doesNotConstrainModesWhenTheBaseHasNoResolveAnys", () => {
       const ast = ExpandedToAST(RAW);
       const base: ExpandedSignatureOptions = {
         depth: null,

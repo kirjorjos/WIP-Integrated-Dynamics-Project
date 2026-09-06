@@ -23,11 +23,11 @@ describe("TestFormatDetection", () => {
     ['{"a": 1}', "json"],
     ["apply(add, 1, 2)", "condensed"],
     ['stringConcat("a", "b")', "condensed"],
-  ] as const)("detectInputFormat(%j) returns %s", (input, expected) => {
+  ] as const)("detectInputFormat%jReturns%s", (input, expected) => {
     expect(detectInputFormat(input)).toBe(expected);
   });
 
-  it("detected lambda-definition inputs parse with ExpandedToAST", () => {
+  it("detectedLambdaDefinitionInputsParseWithExpandedToAST", () => {
     const inputs = [
       "getGenome path bee = nbtPathMatchAll path (itemNBT bee)",
       "inc x = numberAdd x 1",
@@ -40,7 +40,7 @@ describe("TestFormatDetection", () => {
     }
   });
 
-  it("detected expanded inputs parse with ExpandedToAST", () => {
+  it("detectedExpandedInputsParseWithExpandedToAST", () => {
     const expandedInputs = [
       "-- comment\nx = 5\nfinal = x",
       "var1 :: Any\nvar1 = 5\nfinal = var1",
@@ -56,7 +56,7 @@ describe("TestFormatDetection", () => {
     }
   });
 
-  it("detected codeline/condensed inputs still parse in their own formats", () => {
+  it("detectedCodelineCondensedInputsStillParseInTheirOwnFormats", () => {
     expect(CondensedToAST("apply(add, 1, 2)")).toBeTruthy();
     expect(CodeLineToAST("apply add 1 2")).toBeTruthy();
   });

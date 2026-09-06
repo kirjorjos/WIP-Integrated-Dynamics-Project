@@ -2,7 +2,7 @@
 module.exports = {
   testEnvironment: "node",
   testMatch: [
-    "<rootDir>/src/lib/tests/**/*.ts",
+    "<rootDir>/src/lib/tests/**/*.test.ts",
     "<rootDir>/src/tests/**/*.test.ts",
   ],
   transform: {

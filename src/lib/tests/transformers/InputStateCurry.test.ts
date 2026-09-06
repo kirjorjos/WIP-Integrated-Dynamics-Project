@@ -23,14 +23,14 @@ const intAst: TypeAST.Curried = {
 };
 
 describe("TestCurryCanonicalStabilization", () => {
-  describe("stripAutoCurryVarNames", () => {
-    it("is a no-op on an AST without injected auto names", () => {
+  describe("StripAutoCurryVarNames", () => {
+    it("isANoOpOnAnASTWithoutInjectedAutoNames", () => {
       const stripped = stripAutoCurryVarNames(intAst);
       expect(stripped).toEqual(intAst);
       expect((intAst as TypeAST.Curried).varName).toBeUndefined();
     });
 
-    it("removes the auto name injected by the round-trip", () => {
+    it("removesTheAutoNameInjectedByTheRoundTrip", () => {
       const roundTripped = CompressedToAST(ASTToCompressed(intAst));
       expect((roundTripped as TypeAST.Curried).varName).toBeDefined();
       const stripped = stripAutoCurryVarNames(roundTripped);
@@ -38,7 +38,7 @@ describe("TestCurryCanonicalStabilization", () => {
       expect(ASTToCondensed(stripped)).toBe("numberAdd(1, 2)");
     });
 
-    it("keeps a user-supplied varName", () => {
+    it("keepsAUserSuppliedVarName", () => {
       const named: TypeAST.Curried = {
         type: "Curry",
         varName: "myName",
@@ -55,7 +55,7 @@ describe("TestCurryCanonicalStabilization", () => {
       );
     });
 
-    it("removes auto names from nested curries too", () => {
+    it("removesAutoNamesFromNestedCurriesToo", () => {
       const raw = "numberAdd(numberAdd(1, 2), 3)";
       const roundTripped = CompressedToAST(
         ASTToCompressed(CondensedToAST(raw))
@@ -65,15 +65,15 @@ describe("TestCurryCanonicalStabilization", () => {
     });
   });
 
-  describe("canonical references are deterministic across calls", () => {
-    it("integer curry: stable round-trip canonical", () => {
+  describe("CanonicalReferencesAreDeterministicAcrossCalls", () => {
+    it("integerCurryStableRoundTripCanonical", () => {
       const first = canonicalReference("add(1, 2)");
       const second = canonicalReference("add(1, 2)");
       expect(first).toBe("numberAdd(1, 2)");
       expect(second).toBe(first);
     });
 
-    it("string-arg curry: stable canonical (regression: unamedStrings counter)", () => {
+    it("stringArgCurryStableCanonicalRegressionUnamedStringsCounter", () => {
       const raw = 'stringConcat("a", "b")';
       const first = canonicalReference(raw);
       const second = canonicalReference(raw);
@@ -81,7 +81,7 @@ describe("TestCurryCanonicalStabilization", () => {
       expect(second).toBe(first);
     });
 
-    it("round-trip canonical equals decode canonical (same bitstream)", () => {
+    it("roundTripCanonicalEqualsDecodeCanonicalSameBitstream", () => {
       const raw = 'stringConcat("a", "b")';
       const code = ASTToCompressed(CondensedToAST(raw));
       const encodeSide = ASTToCondensed(
@@ -97,8 +97,8 @@ describe("TestCurryCanonicalStabilization", () => {
     });
   });
 
-  describe("overlay behavior", () => {
-    it("non-canonical curry input gets a sparse overlay, not raw fallback", () => {
+  describe("OverlayBehavior", () => {
+    it("nonCanonicalCurryInputGetsASparseOverlayNotRawFallback", () => {
       const raw = "add(1, 2)";
       const canonical = canonicalReference(raw);
       expect(canonical).toBe("numberAdd(1, 2)");
@@ -110,7 +110,7 @@ describe("TestCurryCanonicalStabilization", () => {
       expect(applyCondensedOverlay(canonical, overlay)).toBe(raw);
     });
 
-    it("canonical string-arg curry produces an empty overlay", () => {
+    it("canonicalStringArgCurryProducesAnEmptyOverlay", () => {
       const raw = 'stringConcat("a", "b")';
       const canonical = canonicalReference(raw);
       expect(canonical).toBe(raw);

@@ -885,7 +885,7 @@ matchesFilter = (f) => (i) => == (beeGenome f) (beeGenome i)
   });
 
   it.each(["Condensed", "CodeLine"] as const)(
-    "testEqPrefixedVarNamesRoundTrip (%s style)",
+    "testEqPrefixedVarNamesRoundTrip%sStyle",
     (style) => {
       const input = `
 genomePath = ""
@@ -919,7 +919,7 @@ matchesFilter = (f) => (i) => == (beeGenome f) (beeGenome i)
     ["true", 'Variable("true") = 5'],
     ["false", 'Variable("false") = 5'],
   ] as const)(
-    "testInvalidCharVarNamesWrapAndRoundTrip (%s)",
+    "testInvalidCharVarNamesWrapAndRoundTrip%s",
     (name, expectedLine) => {
       const ast: TypeAST.NetworkCards = {
         type: "NetworkCards",
@@ -949,7 +949,7 @@ matchesFilter = (f) => (i) => == (beeGenome f) (beeGenome i)
   );
 
   it.each(["{}", "5", "-5", "5l", "5.0", "true", "false"])(
-    "testLiteralLikeVarNameRoundTripThroughVariableWrapper (%s)",
+    "testLiteralLikeVarNameRoundTripThroughVariableWrapper%s",
     (name) => {
       const input = `Variable(${JSON.stringify(name)}) = 5\nfinal = Variable(${JSON.stringify(name)})`;
       const network = ExpandedToAST(input) as TypeAST.NetworkCards;
@@ -1038,24 +1038,24 @@ final = matches "a" "b"
     );
   });
 
-  it("bare signature tokens are Any<X> sugar and must land on generic slots", () => {
+  it("bareSignatureTokensAreAnyXSugarAndMustLandOnGenericSlots", () => {
     expect(() => ExpandedToAST("var1 :: A -> B\nvar1 = 5")).toThrow(
       /but the expression has a different signature/
     );
   });
 
-  it("validates a matching single-name standalone signature", () => {
+  it("validatesAMatchingSingleNameStandaloneSignature", () => {
     const ast = rootOf(ExpandedToAST("x :: Integer\nx = 5"));
     expect((ast as TypeAST.Integer).value).toBe("5");
   });
 
-  it("rejects a mismatched single-name standalone signature", () => {
+  it("rejectsAMismatchedSingleNameStandaloneSignature", () => {
     expect(() => ExpandedToAST("x :: Boolean\nx = 5")).toThrow(
       /but the expression has a different signature/
     );
   });
 
-  it("accepts Any-wrapped and bare variable tokens on generic slots", () => {
+  it("acceptsAnyWrappedAndBareVariableTokensOnGenericSlots", () => {
     expect(() => ExpandedToAST("x :: List<A>\nx = 5")).toThrow(
       /but the expression has a different signature/
     );
@@ -1068,7 +1068,7 @@ final = matches "a" "b"
     ).not.toThrow();
   });
 
-  it("rejects a standalone signature for an undefined variable", () => {
+  it("rejectsAStandaloneSignatureForAnUndefinedVariable", () => {
     expect(() => ExpandedToAST("missing :: Integer\nx = 5")).toThrow(
       /variable "missing" is not defined/
     );
