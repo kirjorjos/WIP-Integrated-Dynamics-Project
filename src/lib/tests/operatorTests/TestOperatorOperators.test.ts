@@ -1378,7 +1378,7 @@ describe("TestOperatorOperators", () => {
     expect((res1 as Integer).toJSNumber()).toBe(3);
   });
 
-  describe("Validation and Conditional Output Types", () => {
+  describe("ValidationAndConditionalOutputTypes", () => {
     it("testValidateTypesApply", () => {
       const op = new operatorRegistry.OPERATOR_APPLY();
       expect(op.validateTypes([])).not.toBeNull();

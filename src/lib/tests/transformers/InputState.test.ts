@@ -10,8 +10,8 @@ import {
 } from "lib/transformers/inputState";
 
 describe("TestCondensedOverlay", () => {
-  describe("tokenizeWithGaps", () => {
-    it("tokenizes identically to tokenize", () => {
+  describe("TokenizeWithGaps", () => {
+    it("tokenizesIdenticallyToTokenize", () => {
       const inputs = [
         "add(1, 2)",
         "apply(eq, 8)",
@@ -25,26 +25,26 @@ describe("TestCondensedOverlay", () => {
       }
     });
 
-    it("captures leading gaps (no-trim interface)", () => {
+    it("capturesLeadingGapsNoTrimInterface", () => {
       const { tokens, gaps, trailingGap } = tokenizeWithGaps("  add(1, 2)");
       expect(tokens.length).toBe(gaps.length);
       expect(gaps[0]).toBe("  ");
       expect(trailingGap).toBe("");
     });
 
-    it("captures trailing gap after the last token", () => {
+    it("capturesTrailingGapAfterTheLastToken", () => {
       const stream = tokenizeWithGaps("add(1, 2)  \t");
       expect(stream.trailingGap).toBe("  \t");
     });
 
-    it("captures inter-token gaps", () => {
+    it("capturesInterTokenGaps", () => {
       const stream = tokenizeWithGaps("add (1 , 2 )");
       expect(stream.gaps).toEqual(["", " ", "", " ", " ", " "]);
       expect(stream.trailingGap).toBe("");
     });
   });
 
-  describe("compute + apply against the real ASTToCondensed canonical", () => {
+  describe("ComputePlusApplyAgainstTheRealASTToCondensedCanonical", () => {
     const cases = [
       "add(1, 2)",
       "apply(eq, 8)",
@@ -58,7 +58,7 @@ describe("TestCondensedOverlay", () => {
       "add('a', 'b')", // single-quoted strings
     ];
 
-    it.each(cases)("round-trips %j", (raw) => {
+    it.each(cases)("roundTrips%j", (raw) => {
       const ast = CondensedToAST(raw);
       const canonical = ASTToCondensed(ast);
       const overlay = computeCondensedOverlay(raw, canonical);
@@ -66,8 +66,8 @@ describe("TestCondensedOverlay", () => {
     });
   });
 
-  describe("surface-form divergence falls back to raw text", () => {
-    it("prefix application vs canonical call form → mode 1", () => {
+  describe("SurfaceFormDivergenceFallsBackToRawText", () => {
+    it("prefixApplicationVsCanonicalCallFormToMode1", () => {
       const raw = 'apply stringConcat "a" "b"';
       const canonical = 'stringConcat("a", "b")';
       const overlay = computeCondensedOverlay(raw, canonical);
@@ -77,8 +77,8 @@ describe("TestCondensedOverlay", () => {
     });
   });
 
-  describe("canonical input produces an empty overlay", () => {
-    it("no overrides when raw equals canonical", () => {
+  describe("CanonicalInputProducesAnEmptyOverlay", () => {
+    it("noOverridesWhenRawEqualsCanonical", () => {
       const raw = "add(1, 2)";
       const overlay = computeCondensedOverlay(raw, raw);
       expect(overlay.mode).toBe(0);
@@ -91,8 +91,8 @@ describe("TestCondensedOverlay", () => {
     });
   });
 
-  describe("trailing-gap capture", () => {
-    it("preserves trailing whitespace via hasTrailingGap", () => {
+  describe("TrailingGapCapture", () => {
+    it("preservesTrailingWhitespaceViaHasTrailingGap", () => {
       const raw = "add(1, 2)  ";
       const canonical = "add(1, 2)";
       const overlay = computeCondensedOverlay(raw, canonical);
@@ -105,8 +105,8 @@ describe("TestCondensedOverlay", () => {
     });
   });
 
-  describe("overlay vs raw size decision", () => {
-    it("prefers raw text when the input is compact", () => {
+  describe("OverlayVsRawSizeDecision", () => {
+    it("prefersRawTextWhenTheInputIsCompact", () => {
       const raw = "1l";
       const canonical = "1";
       const overlay = computeCondensedOverlay(raw, canonical);

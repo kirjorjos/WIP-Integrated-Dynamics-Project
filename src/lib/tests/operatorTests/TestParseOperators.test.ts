@@ -22,7 +22,7 @@ describe("TestParseOperators", () => {
    * ----------------------------------- INTEGER -----------------------------------
    */
   describe("PARSE_INTEGER", () => {
-    it("testParseInt_IsInt", () => {
+    it("testParseIntIsInt", () => {
       const res1 = new operatorRegistry.PARSE_INTEGER().evaluate(s("0"));
       expect(res1).toBeInstanceOf(Integer);
     });
@@ -52,15 +52,15 @@ describe("TestParseOperators", () => {
       const res1 = new operatorRegistry.PARSE_INTEGER().evaluate(s("+1"));
       expect((res1 as Integer).toJSNumber()).toBe(1);
     });
-    it("testParseIntHex_x", () => {
+    it("testParseIntHexx", () => {
       const res1 = new operatorRegistry.PARSE_INTEGER().evaluate(s("0xFF"));
       expect((res1 as Integer).toJSNumber()).toBe(0xff);
     });
-    it("testParseIntHex_X", () => {
+    it("testParseIntHexX", () => {
       const res1 = new operatorRegistry.PARSE_INTEGER().evaluate(s("0XFF"));
       expect((res1 as Integer).toJSNumber()).toBe(0xff);
     });
-    it("testParseIntHex_H", () => {
+    it("testParseIntHexH", () => {
       const res1 = new operatorRegistry.PARSE_INTEGER().evaluate(s("#FF"));
       expect((res1 as Integer).toJSNumber()).toBe(0xff);
     });
@@ -104,7 +104,7 @@ describe("TestParseOperators", () => {
    * ----------------------------------- LONG -----------------------------------
    */
   describe("PARSE_LONG", () => {
-    it("testParseLong_IsLong", () => {
+    it("testParseLongIsLong", () => {
       const res1 = new operatorRegistry.PARSE_LONG().evaluate(s("0"));
       expect(res1).toBeInstanceOf(Long);
     });
@@ -132,15 +132,15 @@ describe("TestParseOperators", () => {
       const res1 = new operatorRegistry.PARSE_LONG().evaluate(s("+1"));
       expect((res1 as Long).toJSNumber()).toBe(1);
     });
-    it("testParseLongHex_x", () => {
+    it("testParseLongHexx", () => {
       const res1 = new operatorRegistry.PARSE_LONG().evaluate(s("0xFF"));
       expect((res1 as Long).toJSNumber()).toBe(0xff);
     });
-    it("testParseLongHex_X", () => {
+    it("testParseLongHexX", () => {
       const res1 = new operatorRegistry.PARSE_LONG().evaluate(s("0XFF"));
       expect((res1 as Long).toJSNumber()).toBe(0xff);
     });
-    it("testParseLongHex_H", () => {
+    it("testParseLongHexH", () => {
       const res1 = new operatorRegistry.PARSE_LONG().evaluate(s("#FF"));
       expect((res1 as Long).toJSNumber()).toBe(0xff);
     });
@@ -148,11 +148,11 @@ describe("TestParseOperators", () => {
       const res1 = new operatorRegistry.PARSE_LONG().evaluate(s("-0xFF"));
       expect((res1 as Long).toJSNumber()).toBe(-0xff);
     });
-    it("testParseLongNHex_X", () => {
+    it("testParseLongNHexX", () => {
       const res1 = new operatorRegistry.PARSE_LONG().evaluate(s("-0XFF"));
       expect((res1 as Long).toJSNumber()).toBe(-0xff);
     });
-    it("testParseLongNHex_H", () => {
+    it("testParseLongNHexH", () => {
       const res1 = new operatorRegistry.PARSE_LONG().evaluate(s("-#FF"));
       expect((res1 as Long).toJSNumber()).toBe(-0xff);
     });
@@ -160,11 +160,11 @@ describe("TestParseOperators", () => {
       const res1 = new operatorRegistry.PARSE_LONG().evaluate(s("+0xFF"));
       expect((res1 as Long).toJSNumber()).toBe(0xff);
     });
-    it("testParseLongPHex_X", () => {
+    it("testParseLongPHexX", () => {
       const res1 = new operatorRegistry.PARSE_LONG().evaluate(s("+0XFF"));
       expect((res1 as Long).toJSNumber()).toBe(0xff);
     });
-    it("testParseLongPHex_H", () => {
+    it("testParseLongPHexH", () => {
       const res1 = new operatorRegistry.PARSE_LONG().evaluate(s("+#FF"));
       expect((res1 as Long).toJSNumber()).toBe(0xff);
     });
@@ -208,7 +208,7 @@ describe("TestParseOperators", () => {
    * ----------------------------------- DOUBLE -----------------------------------
    */
   describe("PARSE_DOUBLE", () => {
-    it("testParseDouble_IsDouble", () => {
+    it("testParseDoubleIsDouble", () => {
       const res1 = new operatorRegistry.PARSE_DOUBLE().evaluate(s("0.0"));
       expect(res1).toBeInstanceOf(Double);
     });
@@ -238,15 +238,15 @@ describe("TestParseOperators", () => {
       const res1 = new operatorRegistry.PARSE_DOUBLE().evaluate(s("-1.0"));
       expect((res1 as Double).toJSNumber()).toBe(-1.0);
     });
-    it("testParseDoubleHex_x", () => {
+    it("testParseDoubleHexx", () => {
       const res1 = new operatorRegistry.PARSE_DOUBLE().evaluate(s("0xFF"));
       expect((res1 as Double).toJSNumber()).toBe(255.0);
     });
-    it("testParseDoubleHex_X", () => {
+    it("testParseDoubleHexX", () => {
       const res1 = new operatorRegistry.PARSE_DOUBLE().evaluate(s("0XFF"));
       expect((res1 as Double).toJSNumber()).toBe(255.0);
     });
-    it("testParseDoubleHex_H", () => {
+    it("testParseDoubleHexH", () => {
       const res1 = new operatorRegistry.PARSE_DOUBLE().evaluate(s("#FF"));
       expect((res1 as Double).toJSNumber()).toBe(255.0);
     });
@@ -360,7 +360,7 @@ describe("TestParseOperators", () => {
    * ----------------------------------- BOOLEAN -----------------------------------
    */
   describe("PARSE_BOOLEAN", () => {
-    it("testParseBoolean_IsBoolean", () => {
+    it("testParseBooleanIsBoolean", () => {
       const res1 = new operatorRegistry.PARSE_BOOLEAN().evaluate(s("T"));
       expect(res1).toBeInstanceOf(iBoolean);
     });
@@ -384,15 +384,15 @@ describe("TestParseOperators", () => {
       const res1 = new operatorRegistry.PARSE_BOOLEAN().evaluate(s("-1"));
       expect((res1 as iBoolean).valueOf()).toBe(true);
     });
-    it("testParseBooleanHex_x", () => {
+    it("testParseBooleanHexx", () => {
       const res1 = new operatorRegistry.PARSE_BOOLEAN().evaluate(s("0xFF"));
       expect((res1 as iBoolean).valueOf()).toBe(true);
     });
-    it("testParseBooleanHex_X", () => {
+    it("testParseBooleanHexX", () => {
       const res1 = new operatorRegistry.PARSE_BOOLEAN().evaluate(s("0XFF"));
       expect((res1 as iBoolean).valueOf()).toBe(true);
     });
-    it("testParseBooleanHex_H", () => {
+    it("testParseBooleanHexH", () => {
       const res1 = new operatorRegistry.PARSE_BOOLEAN().evaluate(s("#FF"));
       expect((res1 as iBoolean).valueOf()).toBe(true);
     });

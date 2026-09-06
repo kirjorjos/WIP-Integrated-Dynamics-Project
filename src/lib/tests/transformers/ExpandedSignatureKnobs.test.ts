@@ -28,7 +28,7 @@ describe("ExpandedSignatureKnobs", () => {
     hideOperatorWrappers: false,
   };
 
-  it("signature knobs are honored by the tuned canonical renderer", () => {
+  it("signatureKnobsAreHonoredByTheTunedCanonicalRenderer", () => {
     const ast = ExpandedToAST("x = numberAdd(1, 2)");
     const stripped = stripAutoCurryVarNames(
       CompressedToAST(ASTToCompressed(ast))
@@ -54,7 +54,7 @@ describe("ExpandedSignatureKnobs", () => {
     }
   });
 
-  it("byte-matching signature lines are elided into kind-5 items", () => {
+  it("byteMatchingSignatureLinesAreElidedIntoKind5Items", () => {
     const raw = 'itemList :: List\nitemList = [Item("")]';
     const ast = ExpandedToAST(raw);
     const stripped = stripAutoCurryVarNames(
@@ -78,7 +78,7 @@ describe("ExpandedSignatureKnobs", () => {
     expect(restored).toBe(raw);
   });
 
-  it("round-trips a matched-signature overlay through the bitstream byte-exactly", () => {
+  it("roundTripsAMatchedSignatureOverlayThroughTheBitstreamByteExactly", () => {
     const raw = 'itemList :: List\nitemList = [Item("")]';
     const ast = ExpandedToAST(raw);
     const stripped = stripAutoCurryVarNames(
@@ -114,7 +114,7 @@ describe("ExpandedSignatureKnobs", () => {
     expect(applyExpandedOverlay(decodeCanon, decoded.overlay)).toBe(raw);
   });
 
-  it("falls back to raw when the item stream is not smaller", () => {
+  it("fallsBackToRawWhenTheItemStreamIsNotSmaller", () => {
     const raw = "x = 5\n";
     const ast = ExpandedToAST(raw);
     const stripped = stripAutoCurryVarNames(
@@ -129,7 +129,7 @@ describe("ExpandedSignatureKnobs", () => {
     expect(result.mode).toBe(1);
   });
 
-  it("sparse-diffs a signature line against its canonical (kind-6 path)", () => {
+  it("sparseDiffsASignatureLineAgainstItsCanonicalKind6Path", () => {
     const raw = "getByPipe :: List<A> -> A";
     const canon = "getByPipe :: List<Aggregate> -> Card";
     const diff = computeSignatureDiff(raw, canon);
@@ -142,11 +142,11 @@ describe("ExpandedSignatureKnobs", () => {
     expect(applySignatureDiff(canon, diff)).toBe(raw);
   });
 
-  it("signature sparse-diff falls back to null when streams don't align", () => {
+  it("signatureSparseDiffFallsBackToNullWhenStreamsDontAlign", () => {
     expect(computeSignatureDiff("x :: List<A>", "x :: List")).toBeNull();
   });
 
-  it("kind-6 sparse signature round-trips through the bitstream", () => {
+  it("kind6SparseSignatureRoundTripsThroughTheBitstream", () => {
     const raw = "itemList :: List<Item>";
     const canon = "itemList :: List<Any>";
     const diff = computeSignatureDiff(raw, canon);
@@ -173,7 +173,7 @@ describe("ExpandedSignatureKnobs", () => {
     expect(applySignatureDiff(canon, item.sigOverlay)).toBe(raw);
   });
 
-  it("curry def names survive the round-trip (byEquals not renamed to byAnyEquals)", () => {
+  it("curryDefNamesSurviveTheRoundTripByEqualsNotRenamedToByAnyEquals", () => {
     const raw = "byEquals = apply(pipe, equals)\nx = byEquals";
     const ast = ExpandedToAST(raw);
     const rt = stripAutoCurryVarNames(CompressedToAST(ASTToCompressed(ast)));
@@ -182,7 +182,7 @@ describe("ExpandedSignatureKnobs", () => {
     expect(expanded).not.toContain("byAnyEquals");
   });
 
-  it("a nickname-based curry def byte-matches its tuned canonical sig line", () => {
+  it("aNicknameBasedCurryDefByteMatchesItsTunedCanonicalSigLine", () => {
     const raw =
       "byEquals :: Operator<Any -> Boolean -> Any> -> Operator<Any -> Any>\nbyEquals = apply(pipe, equals)\nx = byEquals";
     const ast = ExpandedToAST(raw);
@@ -205,7 +205,7 @@ describe("ExpandedSignatureKnobs", () => {
     expect(restored).toBe(raw);
   });
 
-  it("kind-7 defs round-trip through the bitstream and restore the sig + def", () => {
+  it("kind7DefsRoundTripThroughTheBitstreamAndRestoreTheSigPlusDef", () => {
     const raw = 'itemList :: List\nitemList = [Item("")]';
     const ast = ExpandedToAST(raw);
     const stripped = stripAutoCurryVarNames(
@@ -242,7 +242,7 @@ describe("ExpandedSignatureKnobs", () => {
     expect(applyExpandedOverlay(decodeCanon, decoded.overlay)).toBe(raw);
   });
 
-  it("hides non-relevant operator wrappers when the knob is on", () => {
+  it("hidesNonRelevantOperatorWrappersWhenTheKnobIsOn", () => {
     const raw =
       "flipFilter = flip(filter)\nflipPipe = flip(pipe)\nend = flipPipe";
     const ast = ExpandedToAST(raw);
@@ -277,7 +277,7 @@ describe("ExpandedSignatureKnobs", () => {
     );
   });
 
-  it("keeps wrappers where the operator/function distinction is relevant", () => {
+  it("keepsWrappersWhereTheOperatorFunctionDistinctionIsRelevant", () => {
     const raw =
       "byEquals = apply(pipe, equals)\nonHead = apply(flip(pipe), head)\nend = onHead";
     const ast = ExpandedToAST(raw);

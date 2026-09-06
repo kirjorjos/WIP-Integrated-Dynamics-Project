@@ -6,22 +6,22 @@ import {
 } from "lib/transformers/inputState";
 
 describe("TestCodeLineOverlay", () => {
-  describe("tokenizeCodeLineWithGaps", () => {
-    it("splits space-separated words, capturing gaps", () => {
+  describe("TokenizeCodeLineWithGaps", () => {
+    it("splitsSpaceSeparatedWordsCapturingGaps", () => {
       const stream = tokenizeCodeLineWithGaps("add 1 2");
       expect(stream.tokens).toEqual(["add", "1", "2"]);
       expect(stream.gaps).toEqual(["", " ", " "]);
       expect(stream.trailingGap).toBe("");
     });
 
-    it("captures leading and trailing whitespace (no-trim)", () => {
+    it("capturesLeadingAndTrailingWhitespaceNoTrim", () => {
       const stream = tokenizeCodeLineWithGaps("  \nadd 1 2\t ");
       expect(stream.tokens).toEqual(["add", "1", "2"]);
       expect(stream.gaps[0]).toBe("  \n");
       expect(stream.trailingGap).toBe("\t ");
     });
 
-    it("handles quotes and structural chars", () => {
+    it("handlesQuotesAndStructuralChars", () => {
       const stream = tokenizeCodeLineWithGaps('stringConcat "a" (1, 2)');
       expect(stream.tokens).toEqual([
         "stringConcat",
@@ -35,7 +35,7 @@ describe("TestCodeLineOverlay", () => {
     });
   });
 
-  describe("compute + apply against the real ASTToCodeLine canonical", () => {
+  describe("ComputePlusApplyAgainstTheRealASTToCodeLineCanonical", () => {
     const cases = [
       "add 1 2", // canonical → no overrides
       'stringConcat "a" "b"',
@@ -47,7 +47,7 @@ describe("TestCodeLineOverlay", () => {
       "[1, 2, 3]",
     ];
 
-    it.each(cases)("round-trips %j", (raw) => {
+    it.each(cases)("roundTrips%j", (raw) => {
       const ast = CodeLineToAST(raw);
       const canonical = ASTToCodeLine(ast);
       const overlay = computeCodeLineOverlay(raw, canonical);
@@ -55,8 +55,8 @@ describe("TestCodeLineOverlay", () => {
     });
   });
 
-  describe("canonical input produces an empty overlay", () => {
-    it("no overrides when raw equals canonical", () => {
+  describe("CanonicalInputProducesAnEmptyOverlay", () => {
+    it("noOverridesWhenRawEqualsCanonical", () => {
       const raw = "add 1 2";
       const overlay = computeCodeLineOverlay(raw, raw);
       expect(overlay.mode).toBe(0);
