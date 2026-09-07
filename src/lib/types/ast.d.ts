@@ -102,7 +102,12 @@ namespace TypeAST {
 
   type NetworkCards = {
     type: "NetworkCards";
-    definitions: { name: string; node: AST }[];
+    definitions: {
+      name: string;
+      node: AST;
+      segmentIndex?: number;
+      comment?: string;
+    }[];
     varName?: string;
   };
 

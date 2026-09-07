@@ -26,25 +26,52 @@ import {
   assertNoVarRefs,
   buildNetworkCards,
   getNetworkDefLastCardIds,
+  getNetworkSegmentRefs,
 } from "lib/transformers/NetworkCards";
 import { normalizeSegments } from "lib/transformers/MixedLists";
 import { QuoteDelimiter, unquoteString } from "lib/transformers/Condensed";
 
+export interface CodeLineOutputOptions {
+  joinStatements?: ";" | "\n";
+  refStyle?: "varId" | "refs";
+  atNameRefs?: boolean;
+}
+
 export const ASTToCodeLine = (
   ast: TypeAST.AST,
   isTopLevel = true,
-  startVariableId = 0
+  startVariableId = 0,
+  outputOpts: CodeLineOutputOptions = {}
 ): string => {
   const defLastCardIds = getNetworkDefLastCardIds(ast, startVariableId);
+  const segmentRefs = getNetworkSegmentRefs(ast);
+
+  const refString = (node: TypeAST.AST): string | null => {
+    const lastCardId = defLastCardIds.get(node);
+    if (lastCardId === undefined) return null;
+    if (outputOpts.refStyle === "refs" && segmentRefs) {
+      const seg = segmentRefs.get(node);
+      if (seg) {
+        return seg.segmentIndex === seg.totalSegments - 1
+          ? "@calculation"
+          : `@${seg.segmentIndex}`;
+      }
+    }
+    return String(lastCardId);
+  };
 
   const stringify = (node: TypeAST.AST, topLevel = false): string => {
-    const lastCardId = defLastCardIds.get(node);
-    if (lastCardId !== undefined && !topLevel) {
-      return String(lastCardId);
+    const ref = refString(node);
+    if (ref !== null && !topLevel) {
+      return ref;
     }
 
     if (node.varName && !topLevel) {
-      return formatVarName(node.varName);
+      const formatted = formatVarName(node.varName);
+      if (outputOpts.atNameRefs && !formatted.startsWith("@")) {
+        return `@${formatted}`;
+      }
+      return formatted;
     }
 
     const isAtomic = (node: TypeAST.AST) =>
@@ -220,7 +247,7 @@ export const ASTToCodeLine = (
             if (oldVarName) def.node.varName = oldVarName;
             return statement;
           })
-          .join("; ");
+          .join(outputOpts.joinStatements === "\n" ? "\n" : "; ");
     }
 
     if (node.varName && topLevel) {

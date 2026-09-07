@@ -8,11 +8,23 @@ export { ASTToCompressed, CompressedToAST } from "lib/transformers/Compressed";
 export { ASTToCondensed, CondensedToAST } from "lib/transformers/Condensed";
 export {
   ASTToExpanded,
+  ASTToExpandedWithSignatureOptions,
+  type ExpandedDisplayOptions,
   ExpandedToAST,
+  type ExpandedToASTOptions,
   decomposeASTForExpanded,
   getExpandedVarName,
   resetExpandedVarCounter,
 } from "lib/transformers/Expanded";
+export {
+  DEFAULT_TRANSFORMER_SETTINGS,
+  decodeSettingsOpts,
+  encodeSettingsOpts,
+  isDefaultSettings,
+  type TransformerSettings,
+} from "lib/transformers/transformerSettings";
+export type { CondensedOutputOptions } from "lib/transformers/Condensed";
+export type { CodeLineOutputOptions } from "lib/transformers/CodeLine";
 export {
   flattenAnonymousBaseOperatorApplication,
   evaluateFullyAppliedCurry,
