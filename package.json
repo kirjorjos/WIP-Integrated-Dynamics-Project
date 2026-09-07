@@ -29,6 +29,7 @@
     "test:debug": "jest --runInBand --no-cache",
     "test:screenshots": "node scripts/run-visual-tests.mjs",
     "test:report": "playwright show-report",
+    "compare": "node scripts/compare.mjs",
     "generate": "npm run generate:screenshots",
     "generate:screenshots": "node scripts/generate-screenshots.mjs",
     "format": "prettier --write .",

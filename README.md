@@ -45,6 +45,12 @@ After cloning the repo or pulling new changes, run the generation script to rege
 npm run generate
 ```
 
+To run the playwright test(s) CI flagged as diffs on the current PR, noting that this regenerates your local snapshots as above, and assuming `gh` is installed and authenticated:
+
+```bash
+npm run compare
+```
+
 To be prompted for commit message:
 
 ```bash
