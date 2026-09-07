@@ -1319,6 +1319,55 @@ button {
   align-content: start;
 }
 
+.settings-panel {
+  border: 1px solid #9cc9d3;
+  border-radius: 0.5rem;
+  background: rgba(235, 247, 250, 0.6);
+  padding: 0.5rem 0.75rem;
+}
+
+.settings-summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: #1b404d;
+  user-select: none;
+}
+
+.settings-body {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+}
+
+.settings-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.6rem;
+  align-items: center;
+  font-size: 0.9rem;
+}
+
+.settings-row .settings-label {
+  color: #274750;
+}
+
+.settings-row.disabled {
+  opacity: 0.45;
+}
+
+.settings-row input[type="checkbox"] {
+  justify-self: end;
+}
+
+.settings-row .select {
+  justify-self: end;
+  max-width: 12rem;
+}
+
+.expanded-output-viewer.scroll-mode {
+  white-space: pre;
+}
+
 .transformer-actions button {
   border: 1px solid #8ebec8;
   border-radius: 0.5rem;

@@ -14,6 +14,7 @@ import {
   formatVarName,
   getOperatorSourceName,
   flattenAnonymousBaseOperatorApplication,
+  getArity,
 } from "lib/transformers/helpers";
 import {
   astContentKey,
@@ -703,17 +704,75 @@ export const ASTToExpanded = (
   style: "CodeLine" | "Condensed" = "Condensed"
 ): string => ASTToExpandedWithSignatureOptions(ast, style, null);
 
+export interface ExpandedDisplayOptions {
+  signatureLayout?: "own-line" | "inline";
+  inlinePlacement?: "after" | "before";
+  expandedRefForm?: "varId" | "name";
+  resolve?: boolean;
+  variableWrapper?: boolean;
+  lambdaParamSugar?: boolean;
+  comments?: boolean;
+  joinStatements?: ";" | "\n";
+  refStyle?: "varId" | "refs";
+}
+
+const defComments = (ast: TypeAST.AST): Map<string, string> | null => {
+  if (ast.type !== "NetworkCards") return null;
+  const map = new Map<string, string>();
+  for (const def of ast.definitions) {
+    if (def.comment && def.name) map.set(def.name, def.comment);
+  }
+  return map.size > 0 ? map : null;
+};
+
+const isSingleBlockDefinition = (node: TypeAST.AST): boolean => {
+  switch (node.type) {
+    case "Curry": {
+      const flattened = flattenAnonymousBaseOperatorApplication(node);
+      return Boolean(flattened?.fullyApplied);
+    }
+    case "Pipe":
+    case "Pipe2":
+    case "Flip":
+      return true;
+    default:
+      return true;
+  }
+};
+
+const renderLambdaParamSugar = (
+  node: TypeAST.AST,
+  baseName: string
+): string | null => {
+  const flattened = flattenAnonymousBaseOperatorApplication(node);
+  if (!flattened || flattened.fullyApplied) return null;
+  if (flattened.operator.type !== "Operator") return null;
+  const arity = getArity(flattened.operator);
+  const holes = arity - flattened.args.length;
+  if (holes !== 1) return null;
+  const param = "x";
+  const bodyAst: TypeAST.AST = {
+    type: "Curry",
+    base: flattened.operator,
+    args: [{ type: "Variable", name: param }, ...flattened.args],
+  };
+  const body = ASTToCondensed(bodyAst, false, 0, false);
+  return `${baseName} ${param} = ${body}`;
+};
+
 export const ASTToExpandedWithSignatureOptions = (
   ast: TypeAST.AST,
   style: "CodeLine" | "Condensed" = "Condensed",
   sigOpts: ExpandedSignatureOptions | null,
   preferSourceNames = false,
-  sigOverrides?: ReadonlyMap<string, ExpandedSignatureOptions>
+  sigOverrides?: ReadonlyMap<string, ExpandedSignatureOptions>,
+  displayOpts: ExpandedDisplayOptions = {}
 ): string => {
   resetExpandedVarCounter();
 
   const roots: TypeAST.AST[] =
     ast.type === "NetworkCards" ? ast.definitions.map((d) => d.node) : [ast];
+  const comments = displayOpts.comments ? defComments(ast) : null;
 
   const initialVars = new Set<TypeAST.AST>();
   for (const root of roots) {
@@ -755,7 +814,8 @@ export const ASTToExpandedWithSignatureOptions = (
     const effResolveAnys = Boolean(
       overrideOpts?.resolveAnys ?? effOpts?.resolveAnys
     );
-    const sig = effResolveAnys
+    const useResolveFace = effResolveAnys || displayOpts.resolve === true;
+    const sig = useResolveFace
       ? computeSignature(v, undefined, true)
       : computeSignature(v, signatureCache);
     const sigStr = effOpts
@@ -766,15 +826,42 @@ export const ASTToExpandedWithSignatureOptions = (
     delete v.varName;
     const exprStr =
       style === "CodeLine"
-        ? ASTToCodeLine(v)
-        : ASTToCondensed(v, false, 0, preferSourceNames);
+        ? ASTToCodeLine(v, true, 0, {
+            joinStatements: displayOpts.joinStatements,
+            refStyle: displayOpts.refStyle,
+          })
+        : ASTToCondensed(v, false, 0, preferSourceNames, {
+            joinStatements: displayOpts.joinStatements,
+            refStyle: displayOpts.refStyle,
+          });
     if (oldVarName) v.varName = oldVarName;
 
-    const assignment = `${displayName} = ${exprStr}`;
+    const nameDisplay = displayOpts.variableWrapper
+      ? `Variable("${name.replace(/"/g, '\\"')}")`
+      : displayName;
+    let assignment = `${nameDisplay} = ${exprStr}`;
+    if (displayOpts.lambdaParamSugar) {
+      const sugar = renderLambdaParamSugar(v, nameDisplay);
+      if (sugar !== null) assignment = sugar;
+    }
     if (output.includes(assignment)) continue;
 
-    output.push(`${displayName} :: ${sigStr}`);
-    output.push(assignment);
+    const comment =
+      displayOpts.comments && v.varName ? comments?.get(v.varName) : undefined;
+    if (comment && isSingleBlockDefinition(v)) {
+      output.push(comment);
+    }
+
+    if (displayOpts.signatureLayout === "inline") {
+      const inline =
+        displayOpts.inlinePlacement === "before"
+          ? `${nameDisplay} :: ${sigStr} = ${exprStr}`
+          : `${nameDisplay} = ${exprStr} :: ${sigStr}`;
+      output.push(inline);
+    } else {
+      output.push(`${nameDisplay} :: ${sigStr}`);
+      output.push(assignment);
+    }
     if (i < finalVarsArray.length - 1) {
       output.push("");
     }
@@ -1076,12 +1163,23 @@ const declaredMatchesComputed = (
   return typeNameMatches(node.type, declared.name);
 };
 
+export interface ExpandedToASTOptions {
+  allowDuplicateNames?: boolean;
+  warnings?: string[];
+}
+
 export const ExpandedToAST = (
   expanded: string,
-  startVariableId = 0
+  startVariableId = 0,
+  opts: ExpandedToASTOptions = {}
 ): TypeAST.AST => {
   const rawLines = expanded.split("\n");
   const processedLines: string[] = [];
+  const processedLineOrigins: number[] = [];
+  const warnings = opts.warnings ?? [];
+
+  let pendingStandaloneComment: string | null = null;
+  const lineComments = new Map<number, string>();
 
   const hasTopLevelAssignment = (line: string): boolean =>
     findTopLevelOccurrence(
@@ -1107,7 +1205,14 @@ export const ExpandedToAST = (
 
       if (!inside[i]) {
         if (char === "-" && line[i + 1] === "-") {
-          break; // Ignore comment
+          const commentText = line.slice(i).trim();
+          const trimmed = line.trim();
+          if (trimmed.startsWith("--")) {
+            pendingStandaloneComment = commentText;
+          } else if (!isSig && !pendingStandaloneComment) {
+            pendingStandaloneComment = commentText;
+          }
+          break; // Ignore comment in the AST
         }
         if (char === ":" && line[i + 1] === ":") {
           if (!lineHasAssignment) {
@@ -1137,14 +1242,24 @@ export const ExpandedToAST = (
     }
 
     if (!isSig && cleanLine.trim()) {
+      const origin = processedLines.length;
       processedLines.push(cleanLine.trim());
+      processedLineOrigins.push(lineIdx);
+      if (pendingStandaloneComment !== null) {
+        lineComments.set(origin, pendingStandaloneComment);
+      }
+      pendingStandaloneComment = null;
     }
   }
 
   if (processedLines.length === 0) throw new Error("Empty expanded input");
 
   const scope = new Map<string, TypeAST.AST>();
-  const definitions: { name: string; node: TypeAST.AST }[] = [];
+  const definitions: {
+    name: string;
+    node: TypeAST.AST;
+    comment?: string;
+  }[] = [];
   let finalAST: TypeAST.AST | null = null;
 
   for (let i = 0; i < processedLines.length; i++) {
@@ -1281,19 +1396,28 @@ export const ExpandedToAST = (
       const existing = definitions.find((def) => def.name === varName);
       if (existing) {
         if (astContentKey(existing.node) !== astContentKey(lineAST)) {
-          throw new Error(
-            `Variable "${varName}" is already defined; redefinition is only allowed if the new definition resolves to the same AST`
-          );
+          if (!opts.allowDuplicateNames) {
+            throw new Error(
+              `Variable "${varName}" is already defined; redefinition is only allowed if the new definition resolves to the same AST`
+            );
+          }
+        } else {
+          lineAST = existing.node;
+          scope.set(varName, existing.node);
         }
-        lineAST = existing.node;
-        scope.set(varName, existing.node);
+      }
+      if (existing && astContentKey(existing.node) === astContentKey(lineAST)) {
       } else {
         if (definitions.some((def) => def.node === lineAST)) {
           lineAST = structuredClone(lineAST);
         }
         lineAST.varName = varName;
         scope.set(varName, lineAST);
-        definitions.push({ name: varName, node: lineAST });
+        definitions.push({
+          name: varName,
+          node: lineAST,
+          comment: lineComments.get(i),
+        });
       }
     }
     finalAST = lineAST;
@@ -1322,8 +1446,61 @@ export const ExpandedToAST = (
 
   if (!finalAST) throw new Error("Could not determine final AST");
 
+  if (opts.allowDuplicateNames) {
+    const counts = new Map<string, number>();
+    for (const def of definitions) {
+      counts.set(def.name, (counts.get(def.name) ?? 0) + 1);
+    }
+    for (const [name, count] of counts) {
+      if (count > 1) {
+        warnings.push(
+          `Variable "${name}" redefined with a different definition; both cards kept (later definition wins scope).`
+        );
+      }
+    }
+
+    const duplicated = new Set(
+      [...counts.entries()].filter(([, c]) => c > 1).map(([name]) => name)
+    );
+    if (duplicated.size > 0) {
+      const hasAmbiguousRef = (node: TypeAST.AST): boolean => {
+        if (node.type === "Variable" && node.name.startsWith("@")) {
+          return duplicated.has(node.name.slice(1));
+        }
+        if (node.type === "Curry") {
+          return hasAmbiguousRef(node.base) || node.args.some(hasAmbiguousRef);
+        }
+        if (node.type === "Pipe") {
+          return hasAmbiguousRef(node.op1) || hasAmbiguousRef(node.op2);
+        }
+        if (node.type === "Pipe2") {
+          return (
+            hasAmbiguousRef(node.op1) ||
+            hasAmbiguousRef(node.op2) ||
+            hasAmbiguousRef(node.op3)
+          );
+        }
+        if (node.type === "Flip") return hasAmbiguousRef(node.arg);
+        if (node.type === "List") return node.value.some(hasAmbiguousRef);
+        if (node.type === "Reader") {
+          return node.value.simulatedOutput
+            ? hasAmbiguousRef(node.value.simulatedOutput)
+            : false;
+        }
+        return false;
+      };
+      for (const def of definitions) {
+        if (hasAmbiguousRef(def.node)) {
+          throw new Error(
+            `Variable "${def.name}" references a duplicated variable name via @-ref; duplicate names are ambiguous in @-reference form`
+          );
+        }
+      }
+    }
+  }
+
   const names = definitions.map((d) => d.name);
-  return buildNetworkCards(
+  const network = buildNetworkCards(
     normalizeSegments(
       definitions.map((d) => d.node),
       names
@@ -1331,4 +1508,20 @@ export const ExpandedToAST = (
     startVariableId,
     names
   );
+  const commentByName = new Map<string, string>();
+  for (const def of definitions) {
+    if (def.comment) commentByName.set(def.name, def.comment);
+  }
+  for (const def of network.definitions) {
+    const comment = commentByName.get(def.name);
+    if (comment) {
+      Object.defineProperty(def, "comment", {
+        value: comment,
+        enumerable: false,
+        configurable: true,
+        writable: true,
+      });
+    }
+  }
+  return network;
 };

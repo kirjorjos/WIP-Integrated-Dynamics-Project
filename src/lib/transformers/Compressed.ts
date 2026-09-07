@@ -83,7 +83,7 @@ const enum JSONKind {
 
 type ASTNode = TypeAST.AST;
 
-class BitWriter {
+export class BitWriter {
   private bits: number[] = [];
 
   writeBit(bit: boolean) {
@@ -123,7 +123,7 @@ class BitWriter {
   }
 }
 
-class BitReader {
+export class BitReader {
   private readonly bits: number[];
   private pos = 0;
 
@@ -209,7 +209,7 @@ const bucketBitWidth = (n: number): number => {
   return bits;
 };
 
-const writeVarUint = (writer: BitWriter, value: bigint | number) => {
+export const writeVarUint = (writer: BitWriter, value: bigint | number) => {
   let current = typeof value === "bigint" ? value : BigInt(value);
   if (current < 0n) throw new Error("Varuint can not encode negative values");
   const groups: bigint[] = [];
@@ -224,7 +224,7 @@ const writeVarUint = (writer: BitWriter, value: bigint | number) => {
   }
 };
 
-const readVarUint = (reader: BitReader): number => {
+export const readVarUint = (reader: BitReader): number => {
   let value = 0n;
   while (true) {
     const hasMore = reader.readBit();

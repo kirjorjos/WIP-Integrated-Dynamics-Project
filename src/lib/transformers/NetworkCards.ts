@@ -203,7 +203,11 @@ export const buildNetworkCards = (
     throw new Error("NetworkCards must contain at least one definition");
   }
 
-  const definitions: { name: string; node: TypeAST.AST }[] = [];
+  const definitions: {
+    name: string;
+    node: TypeAST.AST;
+    segmentIndex?: number;
+  }[] = [];
   const segmentFlatIndex: number[] = [];
   const nameToIndex = new Map<string, number>();
 
@@ -217,6 +221,12 @@ export const buildNetworkCards = (
     definitions.push({ name: segmentName, node: segment.node });
     if (segmentName) nameToIndex.set(segmentName, definitions.length - 1);
     segmentFlatIndex[i] = definitions.length - 1;
+    Object.defineProperty(definitions[definitions.length - 1], "segmentIndex", {
+      value: i,
+      enumerable: false,
+      configurable: true,
+      writable: true,
+    });
   }
 
   const resolveRefIndex = (refName: string, currentIndex: number): number => {
@@ -278,6 +288,28 @@ export const getNetworkDefLastCardIds = (
       cumulative += countCards(def.node, seen, new Set());
       map.set(def.node, startVariableId + cumulative - 1);
     }
+  }
+  return map;
+};
+
+export const getNetworkSegmentRefs = (
+  ast: TypeAST.AST
+): Map<TypeAST.AST, { segmentIndex: number; totalSegments: number }> | null => {
+  if (ast.type !== "NetworkCards") return null;
+  const segmentEntries = ast.definitions.filter(
+    (def) => def.segmentIndex !== undefined
+  );
+  if (segmentEntries.length === 0) return null;
+  const totalSegments = segmentEntries.length;
+  const map = new Map<
+    TypeAST.AST,
+    { segmentIndex: number; totalSegments: number }
+  >();
+  for (const def of segmentEntries) {
+    map.set(def.node, {
+      segmentIndex: def.segmentIndex!,
+      totalSegments,
+    });
   }
   return map;
 };

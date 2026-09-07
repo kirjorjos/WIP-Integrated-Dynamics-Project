@@ -185,8 +185,7 @@ const expandShellForScreenshots = async (page: Page) => {
 };
 
 export const openVisual = async (page: Page, code: string, varId = 0) => {
-  const rhsParam = process.env["RHS_HARDENING"] === "1" ? "&rhs=hardened" : "";
-  await page.goto(`/?code=${code}&output=visual&varId=${varId}${rhsParam}`);
+  await page.goto(`/?code=${code}&output=visual&varId=${varId}`);
   await page.locator(".logic-programmer-shot").first().waitFor();
   await waitForFontsAndNetworkIdle(page);
   await expandShellForScreenshots(page);
